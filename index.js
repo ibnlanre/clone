@@ -1,0 +1,6 @@
+/*!
+ * @ibnlanre/clone-0.0.1
+ * Copyright (c) 2021 Ridwan Olanrewaju.
+ * Licensed under the MIT license.
+ */
+!function(e,n){"object"==typeof exports&&"undefined"!=typeof module?module.exports=n():"function"==typeof define&&define.amd?define(n):(e="undefined"!=typeof globalThis?globalThis:e||self).clone=n()}(this,(function(){"use strict";function e(e,t,r){var f=Object.getPrototypeOf(e);Reflect.ownKeys(f).filter((function(e){return!(e in t)})).concat(Reflect.ownKeys(e)).forEach((function(f){return function(f){var o=Object.getOwnPropertyDescriptor(t,f);f in t&&!o.writable||(t[f]=Array.isArray(e[f])?e[f].map((function(e){return n(e,r)})):n(e[f],r))}(f)}))}function n(n,r){void 0===r&&(r=new Map);try{if(r.has(n))return r.get(n);if(!(n&&n instanceof Object))return n;var f=t(n);return e(n,f,r.set(n,f)),f}catch(e){return n}}var t=function(e){var n,t,r=e.constructor.name,f=global.Buffer&&Buffer.isBuffer(e),o=[e.buffer,e.byteOffset,e.length];return"ArrayBuffer"===r?e.slice():"Date"===r?(new Date).setTime(e.getTime()):"RegExp"===r?new RegExp(e.source,/\w+$/.exec(e)||""):"buffer"in e?(f?Buffer.from:new e.constructor).apply(void 0,o):e instanceof Function?new Function("return ("+((null!==(t=(n=e).name+"=")&&void 0!==t?t:"")+n+")"))():new e.constructor};return function(e){return n(e)}}));

@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "target": "es3",
+    "lib": ["esnext"],
+    "module": "umd",
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "experimentalDecorators": true,
+    "declaration": true,
+  }
+}
