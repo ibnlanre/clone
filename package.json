@@ -1,23 +1,26 @@
 {
   "name": "@ibnlanre/clone",
   "version": "0.0.1",
-  "description": "clone any and every JS type",
+  "description": "A simple utility to clone primitive and reference types in JavaScript.",
+  "type": "module",
+  "module": "index.mjs",
   "main": "index.js",
-  "types": "index.d.ts",
-  "files": ["index.js", "index.d.ts"],
-  "dependencies": {},
-  "devDependencies": {
-    "chai": "^4.3.4",
-    "rollup": "^2.45.2",
-    "@wessberg/rollup-plugin-ts": "^1.3.14",
-    "rollup-plugin-terser": "^7.0.2",
-    "typescript": "^4.2.4",
-    "mocha": "^8.3.2"
-  },
+  "files": [
+    "index.d.mts",
+    "index.d.ts",
+    "index.js",
+    "index.js.map",
+    "index.mjs",
+    "index.mjs.map"
+  ],
   "scripts": {
-    "push": "npm publish --access public",
-    "build": "rollup -c",
-    "test": "mocha index.test"
+    "prepublishOnly": "tsup",
+    "package": "npm publish --access public",
+    "preversion": "npm run typecheck && npm run test",
+    "version": "standard-changelog -p angular && git add .",
+    "postversion": "git push && git push --tags && npm run package",
+    "typecheck": "tsc --pretty --noEmit",
+    "test": "vitest run --coverage"
   },
   "repository": {
     "type": "git",
@@ -28,10 +31,20 @@
     "copy",
     "slice"
   ],
-  "author": "Ridwan Olanrewaju <olaitanlanre28@gmail.com>",
+  "author": {
+    "name": "Ridwan Olanrewaju",
+    "email": "olaitanlanre28@gmail.com"
+  },
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/ibnlanre/clone/issues"
   },
-  "homepage": "https://github.com/ibnlanre/clone#readme"
+  "homepage": "https://github.com/ibnlanre/clone#readme",
+  "devDependencies": {
+    "@vitest/coverage-v8": "3.2.4",
+    "standard-changelog": "^7.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
 }

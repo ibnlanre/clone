@@ -1,11 +1,32 @@
 {
   "compilerOptions": {
-    "target": "es3",
-    "lib": ["esnext"],
-    "module": "umd",
-    "moduleResolution": "node",
+    "allowJs": false,
     "allowSyntheticDefaultImports": true,
-    "experimentalDecorators": true,
+    "baseUrl": ".",
+    "checkJs": false,
     "declaration": true,
-  }
+    "declarationMap": true,
+    "emitDeclarationOnly": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "module": "ES2022",
+    "moduleResolution": "node",
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "noUncheckedIndexedAccess": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "resolveJsonModule": true,
+    "paths": {
+      "@/*": ["./*"]
+    },
+    "skipLibCheck": true,
+    "strict": true,
+    "strictNullChecks": true,
+    "target": "ES2017",
+    "verbatimModuleSyntax": true
+  },
+  "exclude": ["node_modules", "dist", "build", "coverage", "examples"]
 }

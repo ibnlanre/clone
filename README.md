@@ -45,20 +45,6 @@ clone(obj); //=> { foo: { bar: [Circular] } }
 
 ### Functions
 
-#### Promises
-
-```javascript
-let myFirstPromise = new Promise((resolve) =>
-  setTimeout(() => resolve("Success!"), 250)
-).then((message) => console.log("Yay! " + message));
-
-clone(myFirstPromise);
-/*
-    Promise { <pending> }
-    Yay! Success!
-*/
-```
-
 #### Function Statements
 
 ```javascript
@@ -84,40 +70,10 @@ clone(test).toString(); //-> function(){ return 0 }
 clone(test) === test; //-> false
 ```
 
-#### Constructor Functions
-
-```javascript
-var Person = function (name) {
-  this.name = name;
-  this.canTalk = true;
-};
-
-Person.prototype.greet = function () {
-  if (this.canTalk) {
-    console.log("Hi, I am " + this.name);
-  }
-};
-
-console.log("greet" in clone(Person).prototype); // true
-console.log("greet" in Person); // false
-```
-
 #### Asynchronous Functions
 
 ```javascript
 clone(async (a, b) => a + b); //-> async (a, b) => a + b
-```
-
-#### Function Constructors
-
-```javascript
-clone(new Function("a", "b", "return 'hello'"));
-/*
-    function anonymous(a,b
-    ) {
-    return 'hello'
-    }
-*/
 ```
 
 #### Generator Functions
@@ -177,9 +133,6 @@ clone(new ArrayBuffer(8));
       byteLength: 8
     }
 */
-
-clone(Buffer.from("hello", "utf16le"));
-//-> <Buffer 68 00 65 00 6c 00 6c 00 6f 00>
 ```
 
 ### Dates
@@ -189,19 +142,20 @@ clone(new Date("1986-05-21T00:00:00.000Z"));
 //-> 1986-05-21T00:00:00.000Z
 ```
 
-### Symbols
+### Maps
 
 ```javascript
-const a = Symbol("a");
-class Foobar {
-  constructor(_a) {
-    this[a] = { [_a]: null };
-  }
-}
-const foobar = new Foobar("aaa");
-foobar[a]["aaa"] = foobar[a];
+const map = new Map();
+map.set("foo", "bar");
+map.set("baz", "qux");
+clone(map); //-> Map(2) { 'foo' => 'bar', 'baz' => 'qux' }
+```
 
-foobar; //-> Foobar { [Symbol(a)]: { aaa: [Circular] } }
-stringify(a); //-> {"legend":[],"main":"_sm_Symbol(a)"}
-parse(stringify(foobar)); //-> { [Symbol(a)]: { aaa: [Circular] } }
-console.log(clone(a) === a); //-> true
+### Sets
+
+```javascript
+const set = new Set();
+set.add("foo");
+set.add("bar");
+clone(set); //-> Set(2) { 'foo', 'bar' }
+```
