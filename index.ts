@@ -1,5 +1,5 @@
-export type Dictionary = Record<PropertyKey, unknown>;
-export type GenericObject = { [key: string]: any };
+type Dictionary = Record<PropertyKey, unknown>;
+type GenericObject = Record<string, any>;
 
 /**
  * Check if the value is a dictionary.
@@ -8,7 +8,7 @@ export type GenericObject = { [key: string]: any };
  *
  * @returns A boolean indicating whether the value is a dictionary.
  */
-export function isDictionary(value: unknown): value is Dictionary {
+function isDictionary(value: unknown): value is Dictionary {
   return Object.prototype.toString.call(value) === "[object Object]";
 }
 
@@ -23,45 +23,21 @@ function isObject(value: unknown): value is GenericObject {
 }
 
 /**
- * Clone a function while preserving its properties.
- * The cloned function will have the same properties as the original.
+ * snapshot a function while preserving its properties.
+ * The snapshotd function will have the same properties as the original.
  *
- * @param fn - The function to clone
- * @returns A new function that is a clone of the original
+ * @param fn - The function to snapshot
+ * @returns A new function that is a snapshot of the original
  */
 const cloneFunction = (fn: Function) => {
   return Object.assign(fn.bind(null), fn);
 };
 
-/**
- * Create a deep clone of any value
- * Preserves prototypes for plain objects and handles:
- * - Primitives
- * - Date objects
- * - RegExp objects
- * - Map objects (keys and values are deep cloned)
- * - Set objects (values are deep cloned)
- * - ArrayBuffer objects
- * - Typed arrays (Int8Array, Uint8Array, etc.)
- * - DataView objects
- * - Error objects (including custom properties)
- * - URL objects
- * - URLSearchParams objects
- * - Arrays
- * - Plain objects (preserving prototype)
- * - Cyclic references
- * - Other objects (shallow copy)
- *
- * @param value - The value to clone
- * @param visited - WeakMap tracking already processed objects to handle cyclic references
- *
- * @returns A new cloned value
- */
-export function createSnapshot<T>(value: T, visited = new WeakMap()): T {
+function createSnapshot<T>(value: T, visited = new WeakMap()): T {
   if (typeof value === "function") {
-    const clone = cloneFunction(value);
-    visited.set(value, clone);
-    return clone as T;
+    const snapshot = cloneFunction(value);
+    visited.set(value, snapshot);
+    return snapshot as T;
   }
 
   if (!isObject(value)) return value;
@@ -77,25 +53,25 @@ export function createSnapshot<T>(value: T, visited = new WeakMap()): T {
   }
 
   if (value instanceof Map) {
-    const clone = new Map();
-    visited.set(value, clone);
+    const snapshot = new Map();
+    visited.set(value, snapshot);
 
     value.forEach((val, key) => {
-      clone.set(createSnapshot(key, visited), createSnapshot(val, visited));
+      snapshot.set(createSnapshot(key, visited), createSnapshot(val, visited));
     });
 
-    return clone as T;
+    return snapshot as T;
   }
 
   if (value instanceof Set) {
-    const clone = new Set();
-    visited.set(value, clone);
+    const snapshot = new Set();
+    visited.set(value, snapshot);
 
     value.forEach((val) => {
-      clone.add(createSnapshot(val, visited));
+      snapshot.add(createSnapshot(val, visited));
     });
 
-    return clone as T;
+    return snapshot as T;
   }
 
   if (value instanceof ArrayBuffer) {
@@ -115,11 +91,11 @@ export function createSnapshot<T>(value: T, visited = new WeakMap()): T {
 
   if (value instanceof Error) {
     const Constructor = value.constructor as ErrorConstructor;
-    const clone = new Constructor(value.message);
+    const snapshot = new Constructor(value.message);
 
-    clone.name = value.name;
-    clone.stack = value.stack;
-    visited.set(value, clone);
+    snapshot.name = value.name;
+    snapshot.stack = value.stack;
+    visited.set(value, snapshot);
 
     for (const key of Object.getOwnPropertyNames(value)) {
       if (["message", "name", "stack"].includes(key)) continue;
@@ -127,14 +103,14 @@ export function createSnapshot<T>(value: T, visited = new WeakMap()): T {
       const descriptor = Object.getOwnPropertyDescriptor(value, key);
 
       if (descriptor) {
-        Object.defineProperty(clone, key, {
+        Object.defineProperty(snapshot, key, {
           ...descriptor,
           value: createSnapshot(descriptor.value, visited),
         });
       }
     }
 
-    return clone as T;
+    return snapshot as T;
   }
 
   if (value instanceof URL) {
@@ -146,15 +122,15 @@ export function createSnapshot<T>(value: T, visited = new WeakMap()): T {
   }
 
   if (Array.isArray(value)) {
-    const clone = [] as typeof value;
+    const snapshot = [] as typeof value;
 
-    visited.set(value, clone);
+    visited.set(value, snapshot);
 
     value.forEach((item, index) => {
-      clone[index] = createSnapshot(item, visited);
+      snapshot[index] = createSnapshot(item, visited);
     });
 
-    return clone as T;
+    return snapshot as T;
   }
 
   if (isDictionary(value)) {
@@ -173,12 +149,22 @@ export function createSnapshot<T>(value: T, visited = new WeakMap()): T {
         continue;
       }
 
-      const clone = createSnapshot(originalValue, visited);
-      Reflect.set(result, key, clone);
+      const snapshot = createSnapshot(originalValue, visited);
+      Reflect.set(result, key, snapshot);
     }
 
     return result as T;
   }
 
-  return value;
+  return value as never;
+}
+
+/**
+ * Creates a deep clone of a value.
+ *
+ * @param value The value to clone.
+ * @returns The cloned value.
+ */
+export default function clone<T>(value: T): T {
+  return createSnapshot(value);
 }

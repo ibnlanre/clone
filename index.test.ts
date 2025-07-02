@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { createSnapshot, type Dictionary } from "./index";
+import createSnapshot from "./index";
 
 describe("createSnapshot", () => {
   it("should create a snapshot of the given state", () => {
-    const state: Dictionary = { a: 1, b: 2, c: 3 };
+    const state = { a: 1, b: 2, c: 3 };
     const snapshot = createSnapshot(state);
 
     expect(snapshot).toEqual(state);
@@ -24,7 +24,7 @@ describe("createSnapshot", () => {
   });
 
   it("should include non-enumerable properties in the snapshot", () => {
-    const state: Dictionary = {};
+    const state = {};
     Object.defineProperty(state, "a", {
       enumerable: false,
       value: 1,
