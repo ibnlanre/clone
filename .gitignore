@@ -1,6 +1,7 @@
 node_modules/
 coverage/
 
+index.cjs*
 index.js*
 index.mjs*
 index.d.*

@@ -1,161 +1,244 @@
-# Clone
+# @ibnlanre/clone
 
-Clone any and every JS type, well somewhat.
+A comprehensive deep cloning utility for JavaScript that handles primitive types, complex objects, and cyclic references with ease.
 
-## Install
+## Features
+
+- 🔄 **Deep cloning** with cyclic reference handling
+- 🏗️ **Preserves prototypes** and object descriptors
+- 🎯 **Type-safe** with TypeScript support
+- 📦 **Lightweight** with zero dependencies
+- 🚀 **Comprehensive** support for all JavaScript types
+
+## Installation
 
 ```bash
-npm i @ibnlanre/clone
+npm install @ibnlanre/clone
 ```
 
-## Import
+## Usage
+
+### ES6 Modules
 
 ```javascript
-// Browser
-<script src="https://unpkg.com/@ibnlanre/clone"></script>;
+import { createSnapshot } from "@ibnlanre/clone";
 
-// ES6 Import
-import clone from "@ibnlanre/clone"
-
-// NodeJS Require
-const clone = require("@ibnlanre/clone");
+const original = { name: "John", age: 30 };
+const cloned = createSnapshot(original);
 ```
 
-## Primitives
+### CommonJS
 
 ```javascript
-clone(undefined); //-> undefined
-clone(true); //-> true
-clone(0); //-> 0
-clone("foo"); //-> 'foo'
-clone(BigInt(10)); //-> 10n
-clone(Symbol("foo")); //-> Symbol(foo)
-clone(null); //-> null
+const { createSnapshot } = require("@ibnlanre/clone");
+
+const original = { name: "John", age: 30 };
+const cloned = createSnapshot(original);
 ```
 
-## Reference Types
+### Browser (via CDN)
 
-### Cyclic Objects
+```html
+<script src="https://unpkg.com/@ibnlanre/clone"></script>
+<script>
+  const cloned = createSnapshot({ name: "John", age: 30 });
+</script>
+```
+
+## Supported Types
+
+### Primitives
+
+All primitive types are handled correctly:
 
 ```javascript
-const obj = { foo: { bar: null } };
-obj.foo.bar = obj.foo;
-clone(obj); //=> { foo: { bar: [Circular] } }
+createSnapshot(undefined); // → undefined
+createSnapshot(null); // → null
+createSnapshot(true); // → true
+createSnapshot(42); // → 42
+createSnapshot("hello"); // → "hello"
+createSnapshot(BigInt(123)); // → 123n
+createSnapshot(Symbol("id")); // → Symbol(id)
+```
+
+### Objects and Arrays
+
+```javascript
+// Plain objects
+const obj = { a: 1, b: { c: 2 } };
+const clonedObj = createSnapshot(obj);
+
+// Arrays
+const arr = [1, [2, 3], { d: 4 }];
+const clonedArr = createSnapshot(arr);
+
+// Nested structures
+const complex = {
+  users: [
+    { id: 1, profile: { name: "Alice" } },
+    { id: 2, profile: { name: "Bob" } },
+  ],
+};
+const clonedComplex = createSnapshot(complex);
 ```
 
 ### Functions
 
-#### Function Statements
+Functions are cloned with all their properties preserved:
 
 ```javascript
-function unique(arr) {
-  if (!Array.isArray(arr)) {
-    throw new TypeError("array-unique expects an array.");
-  }
-  return arr.length;
+function greet(name) {
+  return `Hello, ${name}!`;
 }
-unique.prototype.greet = () => "hello";
-clone(unique)([1, 2, 3]); //-> 3
-clone(unique).prototype.greet(); //-> hello
+greet.customProp = "custom value";
+greet.prototype.sayGoodbye = () => "Goodbye!";
+
+const clonedGreet = createSnapshot(greet);
+clonedGreet("World"); // → "Hello, World!"
+clonedGreet.customProp; // → "custom value"
+clonedGreet.prototype.sayGoodbye(); // → "Goodbye!"
+clonedGreet !== greet; // → true (different reference)
 ```
 
-#### Function Expressions
+### Built-in Objects
+
+#### Dates
 
 ```javascript
-let test = function () {
-  return 0;
-};
-clone(test); //-> [Function: test]
-clone(test).toString(); //-> function(){ return 0 }
-clone(test) === test; //-> false
+const date = new Date("2023-12-25");
+const clonedDate = createSnapshot(date);
+// → 2023-12-25T00:00:00.000Z
 ```
 
-#### Asynchronous Functions
+#### Regular Expressions
 
 ```javascript
-clone(async (a, b) => a + b); //-> async (a, b) => a + b
+const regex = /hello/gi;
+const clonedRegex = createSnapshot(regex);
+// → /hello/gi (with same flags)
 ```
 
-#### Generator Functions
+#### Maps
 
 ```javascript
-clone(function* (b, c) {
-  yield 0;
-}); //-> [GeneratorFunction]
+const map = new Map([
+  ["key1", "value1"],
+  ["key2", { nested: "object" }],
+]);
+const clonedMap = createSnapshot(map);
+// → Map with deeply cloned keys and values
 ```
 
-#### Arrow functions
+#### Sets
 
 ```javascript
-clone(() => {}).toString(); //-> () => { }
+const set = new Set([1, { a: 2 }, [3, 4]]);
+const clonedSet = createSnapshot(set);
+// → Set with deeply cloned values
 ```
 
-### Arrays
+#### ArrayBuffers and Typed Arrays
 
 ```javascript
-let sequence = [1, 1, [2, 5], 3, 5];
-clone(sequence); //-> [1, 1, [2, 5], 3, 5]
+// ArrayBuffer
+const buffer = new ArrayBuffer(16);
+const clonedBuffer = createSnapshot(buffer);
+
+// Typed Arrays
+const int32Array = new Int32Array([1, 2, 3, 4]);
+const clonedInt32Array = createSnapshot(int32Array);
+
+// DataView
+const dataView = new DataView(buffer, 4, 8);
+const clonedDataView = createSnapshot(dataView);
 ```
 
-#### Typed Arrays
+#### Error Objects
 
 ```javascript
-clone(new Int8Array(2)); //-> Int8Array [ 0, 0 ]
-clone(new Uint8Array(2)); //-> Uint8Array [ 0, 0 ]
-clone(new Uint8ClampedArray(new ArrayBuffer(6), 1, 4));
-//-> Uint8ClampedArray [ 0, 0, 0, 0 ]
+const error = new Error("Something went wrong");
+error.code = "E001";
+error.details = { timestamp: Date.now() };
 
-clone(new Int16Array(2)); //-> Int16Array [ 0, 0 ]
-clone(new Uint16Array(2)); //-> Uint16Array [ 0, 0 ]
-
-clone(new Int32Array(2)); //-> Int32Array [ 0, 0 ]
-clone(new Uint32Array(2)); //-> Uint32Array [ 0, 0 ]
-
-clone(new Float32Array(2).BYTES_PER_ELEMENT); //-> 4
-clone(new Float64Array(2).BYTES_PER_ELEMENT); //-> 8
-
-clone(new BigInt64Array([21n, 31n])); //-> BigInt64Array [ 21n, 31n ]
-
-var iterable = (function* () {
-  yield* [1n, 2n, 3n];
-})();
-var biguint64 = new BigUint64Array(iterable);
-clone(biguint64); //-> BigUint64Array[1n, 2n, 3n]
+const clonedError = createSnapshot(error);
+// → Error with message, stack, and custom properties cloned
 ```
 
-### Buffers
+#### URLs
 
 ```javascript
-clone(new ArrayBuffer(8));
-/*
-    ArrayBuffer {
-      [Uint8Contents]: <00 00 00 00 00 00 00 00>,
-      byteLength: 8
-    }
-*/
+const url = new URL("https://example.com/path?query=value");
+const clonedUrl = createSnapshot(url);
+
+const params = new URLSearchParams("a=1&b=2");
+const clonedParams = createSnapshot(params);
 ```
 
-### Dates
+### Cyclic References
+
+Handles circular references without infinite loops:
 
 ```javascript
-clone(new Date("1986-05-21T00:00:00.000Z"));
-//-> 1986-05-21T00:00:00.000Z
+const obj = { name: "parent" };
+obj.child = { name: "child", parent: obj };
+obj.self = obj;
+
+const cloned = createSnapshot(obj);
+// → Properly cloned with circular references preserved
+cloned.child.parent === cloned; // → true
+cloned.self === cloned; // → true
 ```
 
-### Maps
+### Prototype Preservation
+
+Object prototypes and property descriptors are preserved:
 
 ```javascript
-const map = new Map();
-map.set("foo", "bar");
-map.set("baz", "qux");
-clone(map); //-> Map(2) { 'foo' => 'bar', 'baz' => 'qux' }
+class Person {
+  constructor(name) {
+    this.name = name;
+  }
+
+  greet() {
+    return `Hello, I'm ${this.name}`;
+  }
+}
+
+const person = new Person("Alice");
+const clonedPerson = createSnapshot(person);
+
+clonedPerson instanceof Person; // → true
+clonedPerson.greet(); // → "Hello, I'm Alice"
+clonedPerson !== person; // → true
 ```
 
-### Sets
+## API Reference
 
-```javascript
-const set = new Set();
-set.add("foo");
-set.add("bar");
-clone(set); //-> Set(2) { 'foo', 'bar' }
-```
+### `createSnapshot<T>(value: T, visited?: WeakMap): T`
+
+Creates a deep clone of the provided value.
+
+**Parameters:**
+
+- `value` - The value to clone
+- `visited` - (Optional) WeakMap for tracking circular references
+
+**Returns:**
+
+- A deep clone of the input value
+
+**Type Safety:**
+
+- Maintains TypeScript type information
+- Returns the same type as the input
+
+## Performance Notes
+
+- Uses `WeakMap` for efficient circular reference tracking
+- Minimizes object creation for primitive types
+- Preserves prototype chain without unnecessary copying
+- Optimized for common use cases
+
+## License
+
+MIT © [Ridwan Olanrewaju](https://github.com/ibnlanre)

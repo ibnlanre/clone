@@ -3,15 +3,15 @@
   "version": "0.1.0",
   "description": "A simple utility to clone primitive and reference types in JavaScript.",
   "type": "module",
-  "module": "index.mjs",
-  "main": "index.js",
+  "module": "index.js",
+  "main": "index.cjs",
   "files": [
-    "index.d.mts",
+    "index.cjs",
+    "index.cjs.map",
+    "index.d.cts",
     "index.d.ts",
     "index.js",
-    "index.js.map",
-    "index.mjs",
-    "index.mjs.map"
+    "index.js.map"
   ],
   "scripts": {
     "prepublishOnly": "tsup",
