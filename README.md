@@ -21,19 +21,19 @@ npm install @ibnlanre/clone
 ### ES6 Modules
 
 ```javascript
-import { createSnapshot } from "@ibnlanre/clone";
+import clone from "@ibnlanre/clone";
 
 const original = { name: "John", age: 30 };
-const cloned = createSnapshot(original);
+const cloned = clone(original);
 ```
 
 ### CommonJS
 
 ```javascript
-const { createSnapshot } = require("@ibnlanre/clone");
+const clone = require("@ibnlanre/clone");
 
 const original = { name: "John", age: 30 };
-const cloned = createSnapshot(original);
+const cloned = clone(original);
 ```
 
 ### Browser (via CDN)
@@ -41,7 +41,7 @@ const cloned = createSnapshot(original);
 ```html
 <script src="https://unpkg.com/@ibnlanre/clone"></script>
 <script>
-  const cloned = createSnapshot({ name: "John", age: 30 });
+  const cloned = clone({ name: "John", age: 30 });
 </script>
 ```
 
@@ -52,13 +52,13 @@ const cloned = createSnapshot(original);
 All primitive types are handled correctly:
 
 ```javascript
-createSnapshot(undefined); // → undefined
-createSnapshot(null); // → null
-createSnapshot(true); // → true
-createSnapshot(42); // → 42
-createSnapshot("hello"); // → "hello"
-createSnapshot(BigInt(123)); // → 123n
-createSnapshot(Symbol("id")); // → Symbol(id)
+clone(undefined); // → undefined
+clone(null); // → null
+clone(true); // → true
+clone(42); // → 42
+clone("hello"); // → "hello"
+clone(BigInt(123)); // → 123n
+clone(Symbol("id")); // → Symbol(id)
 ```
 
 ### Objects and Arrays
@@ -66,11 +66,11 @@ createSnapshot(Symbol("id")); // → Symbol(id)
 ```javascript
 // Plain objects
 const obj = { a: 1, b: { c: 2 } };
-const clonedObj = createSnapshot(obj);
+const clonedObj = clone(obj);
 
 // Arrays
 const arr = [1, [2, 3], { d: 4 }];
-const clonedArr = createSnapshot(arr);
+const clonedArr = clone(arr);
 
 // Nested structures
 const complex = {
@@ -79,7 +79,7 @@ const complex = {
     { id: 2, profile: { name: "Bob" } },
   ],
 };
-const clonedComplex = createSnapshot(complex);
+const clonedComplex = clone(complex);
 ```
 
 ### Functions
@@ -93,7 +93,7 @@ function greet(name) {
 greet.customProp = "custom value";
 greet.prototype.sayGoodbye = () => "Goodbye!";
 
-const clonedGreet = createSnapshot(greet);
+const clonedGreet = clone(greet);
 clonedGreet("World"); // → "Hello, World!"
 clonedGreet.customProp; // → "custom value"
 clonedGreet.prototype.sayGoodbye(); // → "Goodbye!"
@@ -106,7 +106,7 @@ clonedGreet !== greet; // → true (different reference)
 
 ```javascript
 const date = new Date("2023-12-25");
-const clonedDate = createSnapshot(date);
+const clonedDate = clone(date);
 // → 2023-12-25T00:00:00.000Z
 ```
 
@@ -114,7 +114,7 @@ const clonedDate = createSnapshot(date);
 
 ```javascript
 const regex = /hello/gi;
-const clonedRegex = createSnapshot(regex);
+const clonedRegex = clone(regex);
 // → /hello/gi (with same flags)
 ```
 
@@ -125,7 +125,7 @@ const map = new Map([
   ["key1", "value1"],
   ["key2", { nested: "object" }],
 ]);
-const clonedMap = createSnapshot(map);
+const clonedMap = clone(map);
 // → Map with deeply cloned keys and values
 ```
 
@@ -133,7 +133,7 @@ const clonedMap = createSnapshot(map);
 
 ```javascript
 const set = new Set([1, { a: 2 }, [3, 4]]);
-const clonedSet = createSnapshot(set);
+const clonedSet = clone(set);
 // → Set with deeply cloned values
 ```
 
@@ -142,15 +142,15 @@ const clonedSet = createSnapshot(set);
 ```javascript
 // ArrayBuffer
 const buffer = new ArrayBuffer(16);
-const clonedBuffer = createSnapshot(buffer);
+const clonedBuffer = clone(buffer);
 
 // Typed Arrays
 const int32Array = new Int32Array([1, 2, 3, 4]);
-const clonedInt32Array = createSnapshot(int32Array);
+const clonedInt32Array = clone(int32Array);
 
 // DataView
 const dataView = new DataView(buffer, 4, 8);
-const clonedDataView = createSnapshot(dataView);
+const clonedDataView = clone(dataView);
 ```
 
 #### Error Objects
@@ -160,7 +160,7 @@ const error = new Error("Something went wrong");
 error.code = "E001";
 error.details = { timestamp: Date.now() };
 
-const clonedError = createSnapshot(error);
+const clonedError = clone(error);
 // → Error with message, stack, and custom properties cloned
 ```
 
@@ -168,10 +168,10 @@ const clonedError = createSnapshot(error);
 
 ```javascript
 const url = new URL("https://example.com/path?query=value");
-const clonedUrl = createSnapshot(url);
+const clonedUrl = clone(url);
 
 const params = new URLSearchParams("a=1&b=2");
-const clonedParams = createSnapshot(params);
+const clonedParams = clone(params);
 ```
 
 ### Cyclic References
@@ -183,7 +183,7 @@ const obj = { name: "parent" };
 obj.child = { name: "child", parent: obj };
 obj.self = obj;
 
-const cloned = createSnapshot(obj);
+const cloned = clone(obj);
 // → Properly cloned with circular references preserved
 cloned.child.parent === cloned; // → true
 cloned.self === cloned; // → true
@@ -205,7 +205,7 @@ class Person {
 }
 
 const person = new Person("Alice");
-const clonedPerson = createSnapshot(person);
+const clonedPerson = clone(person);
 
 clonedPerson instanceof Person; // → true
 clonedPerson.greet(); // → "Hello, I'm Alice"
@@ -214,7 +214,7 @@ clonedPerson !== person; // → true
 
 ## API Reference
 
-### `createSnapshot<T>(value: T, visited?: WeakMap): T`
+### `clone<T>(value: T, visited?: WeakMap): T`
 
 Creates a deep clone of the provided value.
 
