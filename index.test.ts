@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import createSnapshot from "./index";
+import clone from "./index";
 
-describe("createSnapshot", () => {
+describe("clone", () => {
   it("should create a snapshot of the given state", () => {
     const state = { a: 1, b: 2, c: 3 };
-    const snapshot = createSnapshot(state);
+    const snapshot = clone(state);
 
     expect(snapshot).toEqual(state);
     expect(snapshot).not.toBe(state);
@@ -18,7 +18,7 @@ describe("createSnapshot", () => {
     }
 
     const state = new State();
-    const snapshot = createSnapshot(<any>state);
+    const snapshot = clone(<any>state);
 
     expect(Object.getPrototypeOf(snapshot)).toBe(State.prototype);
   });
@@ -30,7 +30,7 @@ describe("createSnapshot", () => {
       value: 1,
     });
 
-    const snapshot = createSnapshot(state);
+    const snapshot = clone(state);
 
     expect(snapshot).toHaveProperty("a", 1);
     expect(Object.getOwnPropertyDescriptor(snapshot, "a")?.enumerable).toBe(
@@ -42,7 +42,7 @@ describe("createSnapshot", () => {
     const nested = { x: 10, y: 20 };
     const state = { a: 1, nested };
 
-    const snapshot = createSnapshot(state);
+    const snapshot = clone(state);
 
     expect(snapshot.nested).toEqual(nested);
     expect(snapshot.nested).not.toBe(nested);
@@ -55,7 +55,7 @@ describe("createSnapshot", () => {
     const obj: { name: string; self?: typeof obj } = { name: "circular" };
     obj.self = obj;
 
-    const snapshot = createSnapshot(obj);
+    const snapshot = clone(obj);
 
     expect(snapshot).not.toBe(obj);
     expect(snapshot.name).toBe("circular");
@@ -70,7 +70,7 @@ describe("createSnapshot", () => {
     objB.ref = objA;
 
     const container = { a: objA, b: objB };
-    const snapshot = createSnapshot(container);
+    const snapshot = clone(container);
 
     expect(snapshot).not.toBe(container);
     expect(snapshot.a).not.toBe(objA);
@@ -88,7 +88,7 @@ describe("createSnapshot", () => {
     const arr: ArrayWithCircularRef = [1, 2];
     arr.push(arr);
 
-    const snapshot = createSnapshot(arr);
+    const snapshot = clone(arr);
 
     expect(snapshot).not.toBe(arr);
     expect(snapshot[0]).toBe(1);
@@ -118,7 +118,7 @@ describe("createSnapshot", () => {
     };
     root.level1.level2.level3.backToRoot = root;
 
-    const snapshot = createSnapshot(root);
+    const snapshot = clone(root);
 
     expect(snapshot).not.toBe(root);
     expect(snapshot.level1.level2.level3.value).toBe("deep");
@@ -138,7 +138,7 @@ describe("createSnapshot", () => {
       ref2: shared,
     };
 
-    const snapshot = createSnapshot(container);
+    const snapshot = clone(container);
 
     expect(snapshot).not.toBe(container);
     expect(snapshot.ref1).not.toBe(shared);
@@ -160,7 +160,7 @@ describe("createSnapshot", () => {
     };
     obj.self = obj;
 
-    const snapshot = createSnapshot(obj);
+    const snapshot = clone(obj);
 
     expect(snapshot.timestamp).not.toBe(date);
     expect(snapshot.timestamp).toEqual(date);
@@ -181,7 +181,7 @@ describe("createSnapshot", () => {
     };
     obj.self = obj;
 
-    const snapshot = createSnapshot(obj);
+    const snapshot = clone(obj);
 
     expect(snapshot.pattern).not.toBe(regex);
     expect(snapshot.pattern).toEqual(regex);
@@ -229,7 +229,7 @@ describe("createSnapshot", () => {
     complex.array.push(complex);
     complex.nested.backToRoot = complex;
 
-    const snapshot = createSnapshot(complex);
+    const snapshot = clone(complex);
 
     expect(snapshot).not.toBe(complex);
     expect(snapshot.string).toBe("hello");
@@ -257,7 +257,7 @@ describe("createSnapshot", () => {
     const obj: { circular?: typeof obj; value: number } = { value: 1 };
     obj.circular = obj;
 
-    const snapshot = createSnapshot(obj);
+    const snapshot = clone(obj);
 
     expect(() => {
       const keys = Object.keys(snapshot);
@@ -283,7 +283,7 @@ describe("createSnapshot", () => {
       },
     };
 
-    const snapshot = createSnapshot(original);
+    const snapshot = clone(original);
     snapshot.user.preferences.theme = "MUTATED";
 
     expect(original.user.preferences.theme).toBe("light");
@@ -295,7 +295,7 @@ describe("createSnapshot", () => {
     };
     customFunction.customProp = "value";
 
-    const snapshot = createSnapshot(customFunction);
+    const snapshot = clone(customFunction);
 
     expect(snapshot).not.toBe(customFunction);
     expect(snapshot.customProp).toBe("value");
@@ -308,7 +308,7 @@ describe("createSnapshot", () => {
       [{ objKey: true }, "objectKeyValue"],
     ]);
 
-    const snapshot = createSnapshot(map);
+    const snapshot = clone(map);
 
     expect(snapshot).not.toBe(map);
     expect(snapshot instanceof Map).toBe(true);
@@ -331,7 +331,7 @@ describe("createSnapshot", () => {
   it("should deep clone Set objects", () => {
     const set = new Set([[1, 2, 3], "primitive", { nested: "object" }]);
 
-    const snapshot = createSnapshot(set);
+    const snapshot = clone(set);
 
     expect(snapshot).not.toBe(set);
     expect(snapshot instanceof Set).toBe(true);
@@ -362,7 +362,7 @@ describe("createSnapshot", () => {
     view[0] = 42;
     view[15] = 255;
 
-    const snapshot = createSnapshot(buffer);
+    const snapshot = clone(buffer);
 
     expect(snapshot).not.toBe(buffer);
     expect(snapshot instanceof ArrayBuffer).toBe(true);
@@ -382,7 +382,7 @@ describe("createSnapshot", () => {
     map.set("self", map);
     map.set("obj", obj);
 
-    const snapshot = createSnapshot(map);
+    const snapshot = clone(map);
 
     expect(snapshot).not.toBe(map);
     expect(snapshot.get("self")).toBe(snapshot);
@@ -397,7 +397,7 @@ describe("createSnapshot", () => {
     const obj = { name: "test", set };
 
     set.add(obj as Element);
-    const snapshot = createSnapshot(set);
+    const snapshot = clone(set);
     expect(snapshot).not.toBe(set);
 
     const snapshotObj = Array.from(snapshot).find(
@@ -414,7 +414,7 @@ describe("createSnapshot", () => {
 
   it("should handle nested Map", () => {
     const outerMap = new Map([["map", innerMap]]);
-    const snapshot = createSnapshot(outerMap);
+    const snapshot = clone(outerMap);
 
     expect(snapshot).not.toBe(outerMap);
     expect(snapshot.get("map")).not.toBe(innerMap);
@@ -423,7 +423,7 @@ describe("createSnapshot", () => {
 
   it("should handle nested Set", () => {
     const outerSet = new Map([["set", innerSet]]);
-    const snapshot = createSnapshot(outerSet);
+    const snapshot = clone(outerSet);
 
     expect(snapshot.get("set")).not.toBe(innerSet);
     expect(snapshot.get("set")?.has("setItem")).toBe(true);
@@ -436,7 +436,7 @@ describe("createSnapshot", () => {
     const array = [1, innerMap, innerSet] as Data;
     const outerMapWithArray = new Map([["array", array]]);
 
-    const snapshot = createSnapshot(outerMapWithArray);
+    const snapshot = clone(outerMapWithArray);
     const snapshotValue = snapshot.get("array") as Data;
     expect(snapshot).not.toBe(outerMapWithArray);
 
@@ -462,7 +462,7 @@ describe("createSnapshot", () => {
     map.set(obj1, "value1");
     map.set(obj2, "value2");
 
-    const snapshot = createSnapshot(map);
+    const snapshot = clone(map);
 
     expect(snapshot).not.toBe(map);
     expect(snapshot.size).toBe(2);
@@ -492,7 +492,7 @@ describe("createSnapshot", () => {
     container.map.set("container", container);
     container.set.add(container);
 
-    const snapshot = createSnapshot(container);
+    const snapshot = clone(container);
 
     expect(snapshot).not.toBe(container);
     expect(snapshot.map.get("container")).toBe(snapshot);
@@ -526,7 +526,7 @@ describe("createSnapshot", () => {
       uint32Array,
     };
 
-    const snapshot = createSnapshot(arrays);
+    const snapshot = clone(arrays);
 
     expect(snapshot.int8Array).not.toBe(int8Array);
     expect(snapshot.int8Array).toEqual(int8Array);
@@ -571,7 +571,7 @@ describe("createSnapshot", () => {
     dataView.setInt32(0, 0x12345678);
     dataView.setFloat32(4, 3.14159);
 
-    const snapshot = createSnapshot(dataView);
+    const snapshot = clone(dataView);
 
     expect(snapshot).not.toBe(dataView);
     expect(snapshot instanceof DataView).toBe(true);
@@ -592,7 +592,7 @@ describe("createSnapshot", () => {
     error.customProperty = "value";
     error.nestedObject = { deep: "value" };
 
-    const snapshot: any = createSnapshot(error);
+    const snapshot: any = clone(error);
 
     expect(snapshot).not.toBe(error);
     expect(snapshot instanceof Error).toBe(true);
@@ -610,7 +610,7 @@ describe("createSnapshot", () => {
     const referenceError = new ReferenceError("Reference error message");
 
     const errors = { rangeError, referenceError, typeError };
-    const snapshot = createSnapshot(errors);
+    const snapshot = clone(errors);
 
     expect(snapshot.typeError).not.toBe(typeError);
     expect(snapshot.typeError instanceof TypeError).toBe(true);
@@ -629,7 +629,7 @@ describe("createSnapshot", () => {
     const url = new URL("https://example.com:8080/path?query=value#fragment");
     const container = { metadata: { title: "Example" }, url };
 
-    const snapshot = createSnapshot(container);
+    const snapshot = clone(container);
 
     expect(snapshot.url).not.toBe(url);
     expect(snapshot.url instanceof URL).toBe(true);
@@ -648,7 +648,7 @@ describe("createSnapshot", () => {
     const params = new URLSearchParams("name=John&age=30&city=New%20York");
     const container = { options: { sorted: true }, params };
 
-    const snapshot = createSnapshot(container);
+    const snapshot = clone(container);
 
     expect(snapshot.params).not.toBe(params);
     expect(snapshot.params instanceof URLSearchParams).toBe(true);
@@ -671,7 +671,7 @@ describe("createSnapshot", () => {
     };
     container.self = container;
 
-    const snapshot = createSnapshot(container);
+    const snapshot = clone(container);
 
     expect(snapshot).not.toBe(container);
     expect(snapshot.data).not.toBe(container.data);
@@ -687,7 +687,7 @@ describe("createSnapshot", () => {
     container.self = container;
     error.container = container;
 
-    const snapshot: any = createSnapshot(container);
+    const snapshot: any = clone(container);
 
     expect(snapshot).not.toBe(container);
     expect(snapshot.error).not.toBe(error);
@@ -719,7 +719,7 @@ describe("createSnapshot", () => {
     dataView.setFloat32(0, 42.5);
     complex.view = dataView;
 
-    const snapshot = createSnapshot(complex);
+    const snapshot = clone(complex);
 
     expect(snapshot.arrays.int32).not.toBe(complex.arrays.int32);
     expect(snapshot.arrays.int32).toEqual(complex.arrays.int32);
@@ -745,5 +745,234 @@ describe("createSnapshot", () => {
     expect(snapshot.params).not.toBe(complex.params);
     expect(snapshot.params.get("filter")).toBe("active");
     expect(snapshot.params.get("sort")).toBe("name");
+  });
+
+  it("should properly handle Symbol properties", () => {
+    const symbolKey = Symbol("test");
+    const obj = {
+      [symbolKey]: "symbol value",
+      regularKey: "regular value",
+    };
+
+    const snapshot = clone(obj);
+
+    expect(snapshot[symbolKey]).toBe("symbol value");
+    expect(snapshot.regularKey).toBe("regular value");
+    expect(Object.getOwnPropertySymbols(snapshot)).toEqual([symbolKey]);
+  });
+
+  it("should clone BigInt values", () => {
+    const obj = {
+      small: BigInt(123),
+      large: BigInt("9007199254740991"),
+    };
+
+    const snapshot = clone(obj);
+
+    expect(snapshot.small).toBe(BigInt(123));
+    expect(snapshot.large).toBe(BigInt("9007199254740991"));
+  });
+
+  it("should handle BigInt64Array and BigUint64Array", () => {
+    if (typeof BigInt64Array !== "undefined") {
+      const bigInt64Array = new BigInt64Array([
+        BigInt(1),
+        BigInt(2),
+        BigInt(3),
+      ]);
+      const bigUint64Array = new BigUint64Array([
+        BigInt(1),
+        BigInt(2),
+        BigInt(3),
+      ]);
+
+      const snapshot1 = clone(bigInt64Array);
+      const snapshot2 = clone(bigUint64Array);
+
+      expect(snapshot1).not.toBe(bigInt64Array);
+      expect(snapshot1 instanceof BigInt64Array).toBe(true);
+      expect([...snapshot1]).toEqual([BigInt(1), BigInt(2), BigInt(3)]);
+
+      expect(snapshot2).not.toBe(bigUint64Array);
+      expect(snapshot2 instanceof BigUint64Array).toBe(true);
+      expect([...snapshot2]).toEqual([BigInt(1), BigInt(2), BigInt(3)]);
+    }
+  });
+
+  it("should maintain function properties and prototype methods", () => {
+    function originalFn(x: number) {
+      return x * 2;
+    }
+    originalFn.staticProp = "static value";
+    originalFn.prototype.method = function () {
+      return "method result";
+    };
+
+    const snapshotFn = clone(originalFn);
+
+    expect(typeof snapshotFn).toBe("function");
+    expect(snapshotFn).not.toBe(originalFn);
+    expect(snapshotFn.staticProp).toBe("static value");
+
+    const originalInstance = Object.create(originalFn.prototype);
+    const snapshotInstance = Object.create(snapshotFn.prototype);
+
+    expect((originalInstance as any).method()).toBe("method result");
+    expect((snapshotInstance as any).method()).toBe("method result");
+  });
+
+  it("should correctly clone constructor functions", () => {
+    function PersonConstructor(this: any, name: string, age: number) {
+      this.name = name;
+      this.age = age;
+    }
+
+    (PersonConstructor as any).species = "Human";
+    (PersonConstructor as any).getInfo = function () {
+      return "This is a Person constructor";
+    };
+
+    PersonConstructor.prototype.greet = function (this: any) {
+      return `Hello, I'm ${this.name} and I'm ${this.age} years old`;
+    };
+
+    PersonConstructor.prototype.getAge = function (this: any) {
+      return this.age;
+    };
+
+    const clonedConstructor = clone(PersonConstructor);
+
+    expect(clonedConstructor).not.toBe(PersonConstructor);
+    expect(typeof clonedConstructor).toBe("function");
+
+    expect((clonedConstructor as any).species).toBe("Human");
+    expect((clonedConstructor as any).getInfo()).toBe(
+      "This is a Person constructor"
+    );
+
+    const originalPerson = new (PersonConstructor as any)("John", 30);
+    const clonedPerson = new (clonedConstructor as any)("Jane", 25);
+
+    expect(originalPerson.name).toBe("John");
+    expect(originalPerson.age).toBe(30);
+    expect(clonedPerson.name).toBe("Jane");
+    expect(clonedPerson.age).toBe(25);
+
+    expect(originalPerson.greet()).toBe("Hello, I'm John and I'm 30 years old");
+    expect(clonedPerson.greet()).toBe("Hello, I'm Jane and I'm 25 years old");
+    expect(originalPerson.getAge()).toBe(30);
+    expect(clonedPerson.getAge()).toBe(25);
+
+    expect(clonedConstructor.prototype).not.toBe(PersonConstructor.prototype);
+    expect(clonedPerson.constructor).toBe(clonedConstructor);
+    expect(originalPerson.constructor).toBe(PersonConstructor);
+
+    expect(originalPerson instanceof PersonConstructor).toBe(true);
+    expect(clonedPerson instanceof clonedConstructor).toBe(true);
+    expect(clonedPerson instanceof PersonConstructor).toBe(false);
+    expect(originalPerson instanceof clonedConstructor).toBe(false);
+  });
+
+  it("should handle edge cases with empty or sparse arrays", () => {
+    const emptyArray: any[] = [];
+    const sparseArray = [1, , 3, , 5];
+    const explicitlyUndefinedArray = [1, undefined, 3, undefined, 5];
+
+    const snapshot1 = clone(emptyArray);
+    const snapshot2 = clone(sparseArray);
+    const snapshot3 = clone(explicitlyUndefinedArray);
+
+    expect(snapshot1).toEqual([]);
+    expect(snapshot1).not.toBe(emptyArray);
+
+    expect(snapshot2.length).toBe(5);
+    expect(0 in snapshot2).toBe(true);
+    expect(1 in snapshot2).toBe(false);
+    expect(2 in snapshot2).toBe(true);
+
+    expect(snapshot3.length).toBe(5);
+    expect(snapshot3[1]).toBe(undefined);
+    expect(1 in snapshot3).toBe(true);
+  });
+
+  it("should handle object with getters and setters", () => {
+    let internalValue = 10;
+    const original = {
+      get value() {
+        return internalValue;
+      },
+      set value(v: number) {
+        internalValue = v;
+      },
+    };
+
+    const snapshot = clone(original);
+
+    expect(
+      Object.getOwnPropertyDescriptor(snapshot, "value")?.get
+    ).toBeDefined();
+    expect(
+      Object.getOwnPropertyDescriptor(snapshot, "value")?.set
+    ).toBeDefined();
+
+    expect(snapshot.value).toBe(10);
+
+    internalValue = 20;
+    expect(original.value).toBe(20);
+    expect(snapshot.value).toBe(20);
+  });
+
+  it("should handle Proxy objects", () => {
+    const target = { message: "Hello", value: 42 };
+    const handler = {
+      get(obj: any, prop: string) {
+        return obj[prop] + " World";
+      },
+    };
+    const proxy = new Proxy(target, handler);
+
+    const snapshot = clone(proxy);
+
+    expect(snapshot).toEqual({ message: "Hello World", value: "42 World" });
+    expect(snapshot).not.toBe(proxy);
+  });
+
+  it("should handle objects with non-configurable or non-writable properties", () => {
+    const obj: Record<string, any> = {};
+    Object.defineProperty(obj, "readOnly", {
+      configurable: true,
+      enumerable: true,
+      value: "fixed value",
+      writable: false,
+    });
+
+    Object.defineProperty(obj, "sealed", {
+      configurable: false,
+      enumerable: true,
+      value: "sealed value",
+      writable: true,
+    });
+
+    const snapshot = clone(obj)
+
+    const readOnlyDesc = Object.getOwnPropertyDescriptor(snapshot, "readOnly");
+    const sealedDesc = Object.getOwnPropertyDescriptor(snapshot, "sealed");
+
+    expect(readOnlyDesc?.writable).toBe(false);
+    expect(sealedDesc?.configurable).toBe(false);
+    expect(snapshot.readOnly).toBe("fixed value");
+    expect(snapshot.sealed).toBe("sealed value");
+  });
+
+  it("should handle objects with undefined values explicitly", () => {
+    const obj = { a: undefined, b: null, c: 0, d: "" };
+    const snapshot = clone(obj);
+
+    expect("a" in snapshot).toBe(true);
+    expect(snapshot.a).toBe(undefined);
+    expect("b" in snapshot).toBe(true);
+    expect(snapshot.b).toBe(null);
+    expect(snapshot.c).toBe(0);
+    expect(snapshot.d).toBe("");
   });
 });

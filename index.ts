@@ -1,39 +1,55 @@
-type Dictionary = Record<PropertyKey, unknown>;
-type GenericObject = Record<string, any>;
-
-/**
- * Check if the value is a dictionary.
- *
- * @param value The value to check.
- *
- * @returns A boolean indicating whether the value is a dictionary.
- */
-function isDictionary(value: unknown): value is Dictionary {
-  return Object.prototype.toString.call(value) === "[object Object]";
-}
-
 /**
  * Check if the value is a plain object.
  *
  * @param value The value to check.
  * @returns A boolean indicating whether the value is a plain object.
  */
-function isObject(value: unknown): value is GenericObject {
+function isObject(value: unknown): value is Record<string, any> {
   return typeof value === "object" && value !== null;
 }
 
 /**
- * snapshot a function while preserving its properties.
- * The snapshotd function will have the same properties as the original.
+ * clone a function while preserving its properties.
+ * The cloned function will have the same properties as the original.
  *
- * @param fn - The function to snapshot
- * @returns A new function that is a snapshot of the original
+ * @param fn - The function to clone
+ * @returns A new function that is a clone of the original
  */
 const cloneFunction = (fn: Function) => {
-  return Object.assign(fn.bind(null), fn);
+  const copy = function (this: any, ...args: any[]) {
+    if (new.target) {
+      const instance = Object.create(copy.prototype);
+      const result = fn.apply(instance, args);
+      return isObject(result) ? result : instance;
+    }
+
+    return fn.apply(this, args);
+  };
+
+  Object.assign(copy, fn);
+
+  if (fn.prototype) {
+    copy.prototype = Object.create(null);
+    Object.assign(copy.prototype, fn.prototype);
+    Reflect.defineProperty(copy.prototype, "constructor", {
+      value: copy,
+      writable: true,
+      configurable: true,
+    });
+  }
+
+  return copy;
 };
 
-function createSnapshot<T>(value: T, visited = new WeakMap()): T {
+/**
+ * Creates a deep clone of a value.
+ *
+ * @param value The value to clone.
+ * @param visited A WeakMap to track visited objects to prevent circular references.
+ *
+ * @returns The cloned value.
+ */
+export default function clone<T>(value: T, visited = new WeakMap()): T {
   if (typeof value === "function") {
     const snapshot = cloneFunction(value);
     visited.set(value, snapshot);
@@ -57,7 +73,7 @@ function createSnapshot<T>(value: T, visited = new WeakMap()): T {
     visited.set(value, snapshot);
 
     value.forEach((val, key) => {
-      snapshot.set(createSnapshot(key, visited), createSnapshot(val, visited));
+      snapshot.set(clone(key, visited), clone(val, visited));
     });
 
     return snapshot as T;
@@ -68,7 +84,7 @@ function createSnapshot<T>(value: T, visited = new WeakMap()): T {
     visited.set(value, snapshot);
 
     value.forEach((val) => {
-      snapshot.add(createSnapshot(val, visited));
+      snapshot.add(clone(val, visited));
     });
 
     return snapshot as T;
@@ -105,7 +121,7 @@ function createSnapshot<T>(value: T, visited = new WeakMap()): T {
       if (descriptor) {
         Object.defineProperty(snapshot, key, {
           ...descriptor,
-          value: createSnapshot(descriptor.value, visited),
+          value: clone(descriptor.value, visited),
         });
       }
     }
@@ -127,44 +143,30 @@ function createSnapshot<T>(value: T, visited = new WeakMap()): T {
     visited.set(value, snapshot);
 
     value.forEach((item, index) => {
-      snapshot[index] = createSnapshot(item, visited);
+      snapshot[index] = clone(item, visited);
     });
 
     return snapshot as T;
   }
 
-  if (isDictionary(value)) {
-    const result = Object.create(
-      Object.getPrototypeOf(value),
-      Object.getOwnPropertyDescriptors(value)
-    );
+  const snapshot = Object.create(Object.getPrototypeOf(value));
+  visited.set(value, snapshot);
 
-    visited.set(value, result);
+  for (const key of Reflect.ownKeys(value)) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
+    if (!descriptor) continue;
 
-    for (const key of Reflect.ownKeys(value)) {
-      const originalValue = Reflect.get(value, key);
-
-      if (!isObject(originalValue)) {
-        Reflect.set(result, key, originalValue);
-        continue;
-      }
-
-      const snapshot = createSnapshot(originalValue, visited);
-      Reflect.set(result, key, snapshot);
+    if ("get" in descriptor || "set" in descriptor) {
+      // Accessor descriptor
+      Object.defineProperty(snapshot, key, descriptor);
+    } else {
+      // Data descriptor
+      Object.defineProperty(snapshot, key, {
+        ...descriptor,
+        value: clone((value as any)[key], visited),
+      });
     }
-
-    return result as T;
   }
 
-  return value as never;
-}
-
-/**
- * Creates a deep clone of a value.
- *
- * @param value The value to clone.
- * @returns The cloned value.
- */
-export default function clone<T>(value: T): T {
-  return createSnapshot(value);
+  return snapshot as T;
 }
