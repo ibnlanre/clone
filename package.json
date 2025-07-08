@@ -5,9 +5,7 @@
   "type": "module",
   "module": "dist/index.js",
   "main": "dist/index.cjs",
-  "files": [
-    "dist"
-  ],
+  "files": ["dist", "*.md"],
   "scripts": {
     "bundle": "tsup",
     "benchmark": "tsx benchmark.ts",
