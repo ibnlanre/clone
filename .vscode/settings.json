@@ -1,0 +1,14 @@
+{
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnPaste": true,
+  "editor.formatOnSave": true,
+  "editor.formatOnType": true,
+  "editor.detectIndentation": true,
+  "editor.codeActionsOnSave": {
+    "source.addMissingImports.ts": "always",
+    "source.removeUnusedImports": "explicit",
+    "source.fixAll.eslint": "always"
+  },
+  "css.customData": [".vscode/tailwind.json"],
+  "typescript.experimental.useTsgo": false
+}

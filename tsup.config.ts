@@ -1,13 +1,13 @@
 import { defineConfig } from "tsup";
 
-import { description, version } from "./package.json";
+import { description, name, version } from "./package.json";
 
 const banner = `/*!
  * @ibnlanre/clone-v${version}
  * ${description}
  * 
- * Copyright (c) 2021 Ridwan Olanrewaju.
- * Licensed under the MIT license.
+ * Copyright (c) 2025 Ridwan Olanrewaju.
+ * Licensed under the BSD-3-Clause license.
  */`;
 
 export default defineConfig({
@@ -16,7 +16,8 @@ export default defineConfig({
   dts: true,
   entry: ["./index.ts"],
   format: ["cjs", "esm"],
-  minify: "terser",
+  minify: true,
+  name,
   outDir: "./dist",
   sourcemap: true,
 });

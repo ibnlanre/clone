@@ -12,7 +12,7 @@
     "bundle": "tsup",
     "benchmark": "tsx benchmark.ts",
     "package": "npm publish --access public",
-    "check-exports": "attw --pack .",
+    "check-exports": "attw --pack ./",
     "prepublishOnly": "npm run bundle && npm run check-exports",
     "preversion": "npm run typecheck && npm run test",
     "version": "standard-changelog -p angular && git add .",
@@ -35,7 +35,7 @@
     "name": "Ridwan Olanrewaju",
     "email": "olaitanlanre28@gmail.com"
   },
-  "license": "MIT",
+  "license": "BSD-3-Clause",
   "bugs": {
     "url": "https://github.com/ibnlanre/clone/issues"
   },
@@ -63,7 +63,6 @@
     "plain-object-clone": "^2.0.1",
     "rfdc": "^1.4.1",
     "standard-changelog": "^7.0.1",
-    "terser": "^5.43.1",
     "tsup": "^8.5.0",
     "tsx": "^4.20.3",
     "typescript": "^5.8.3",
