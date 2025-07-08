@@ -270,12 +270,13 @@ function copyProperties(
   for (let index = 0; index < keys.length; index++) {
     const key = keys[index];
     const descriptor = Object.getOwnPropertyDescriptor(value, key);
-    if (!descriptor) continue;
 
-    if (isPropertyAccessor(descriptor, key)) {
-      Object.defineProperty(result, key, descriptor);
-    } else {
-      result[key] = clone(value[key], visited);
+    if (descriptor) {
+      if (isPropertyAccessor(descriptor, key)) {
+        Object.defineProperty(result, key, descriptor);
+      } else {
+        result[key] = clone(value[key], visited);
+      }
     }
   }
 
