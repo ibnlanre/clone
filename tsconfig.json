@@ -18,16 +18,16 @@
     "noUncheckedIndexedAccess": false,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "resolveJsonModule": true,
     "paths": {
       "@/*": ["./*"]
     },
+    "resolveJsonModule": true,
     "skipLibCheck": true,
     "strict": true,
     "strictNullChecks": true,
     "target": "ES2017",
     "verbatimModuleSyntax": true
   },
-  "include": ["./index.ts"],
-  "exclude": ["node_modules", "dist", "build", "coverage", "examples"]
+  "exclude": ["node_modules", "dist", "build", "coverage", "examples"],
+  "include": ["index.ts", "tsup.config.ts"]
 }

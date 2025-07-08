@@ -3,24 +3,24 @@
   "version": "0.2.0",
   "description": "A simple utility to clone primitive and reference types in JavaScript.",
   "type": "module",
-  "module": "index.js",
-  "main": "index.cjs",
+  "module": "dist/index.js",
+  "main": "dist/index.cjs",
   "files": [
-    "index.cjs",
-    "index.cjs.map",
-    "index.d.cts",
-    "index.d.ts",
-    "index.js",
-    "index.js.map"
+    "dist"
   ],
   "scripts": {
-    "prepublishOnly": "tsup",
+    "bundle": "tsup",
+    "benchmark": "tsx benchmark.ts",
     "package": "npm publish --access public",
+    "check-exports": "attw --pack .",
+    "prepublishOnly": "npm run bundle && npm run check-exports",
     "preversion": "npm run typecheck && npm run test",
     "version": "standard-changelog -p angular && git add .",
     "postversion": "git push && git push --tags && npm run package",
     "typecheck": "tsc --pretty --noEmit",
-    "test": "vitest run --coverage"
+    "test:performance": "vitest run performance.test.ts",
+    "test": "vitest run --coverage",
+    "lint": "eslint --fix"
   },
   "repository": {
     "type": "git",
@@ -41,10 +41,33 @@
   },
   "homepage": "https://github.com/ibnlanre/clone#readme",
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.2",
+    "@types/node": "^24.0.10",
     "@vitest/coverage-v8": "3.2.4",
+    "@vitest/eslint-plugin": "^1.3.4",
+    "clone-deep": "^4.0.1",
+    "deep-copy": "^1.4.2",
+    "eslint": "^9.30.1",
+    "eslint-plugin-only-warn": "^1.1.0",
+    "eslint-plugin-paths": "^1.1.0",
+    "eslint-plugin-perfectionist": "^4.15.0",
+    "eslint-plugin-prettier": "^5.5.1",
+    "fast-copy": "^3.0.2",
+    "fastbench": "^1.0.1",
+    "fastest-json-copy": "^1.0.1",
+    "globals": "^16.3.0",
+    "klona": "^2.0.6",
+    "lodash.clonedeep": "^4.5.0",
+    "nano-copy": "^0.1.1",
+    "nanoclone": "^1.0.2",
+    "plain-object-clone": "^2.0.1",
+    "rfdc": "^1.4.1",
     "standard-changelog": "^7.0.1",
+    "terser": "^5.43.1",
     "tsup": "^8.5.0",
+    "tsx": "^4.20.3",
     "typescript": "^5.8.3",
+    "typescript-eslint": "^8.36.0",
     "vitest": "^3.2.4"
   }
 }

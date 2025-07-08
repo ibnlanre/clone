@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import clone from "./index";
+import clone, { CloneRegistry, createCloneFunction, Handlers } from "./index";
 
 describe("clone", () => {
   it("should create a snapshot of the given state", () => {
@@ -750,8 +750,8 @@ describe("clone", () => {
   it("should properly handle Symbol properties", () => {
     const symbolKey = Symbol("test");
     const obj = {
-      [symbolKey]: "symbol value",
       regularKey: "regular value",
+      [symbolKey]: "symbol value",
     };
 
     const snapshot = clone(obj);
@@ -763,8 +763,8 @@ describe("clone", () => {
 
   it("should clone BigInt values", () => {
     const obj = {
-      small: BigInt(123),
       large: BigInt("9007199254740991"),
+      small: BigInt(123),
     };
 
     const snapshot = clone(obj);
@@ -817,8 +817,8 @@ describe("clone", () => {
     const originalInstance = Object.create(originalFn.prototype);
     const snapshotInstance = Object.create(snapshotFn.prototype);
 
-    expect((originalInstance as any).method()).toBe("method result");
-    expect((snapshotInstance as any).method()).toBe("method result");
+    expect(originalInstance.method()).toBe("method result");
+    expect(snapshotInstance.method()).toBe("method result");
   });
 
   it("should correctly clone constructor functions", () => {
@@ -850,8 +850,8 @@ describe("clone", () => {
       "This is a Person constructor"
     );
 
-    const originalPerson = new (PersonConstructor as any)("John", 30);
-    const clonedPerson = new (clonedConstructor as any)("Jane", 25);
+    const originalPerson = new PersonConstructor("John", 30);
+    const clonedPerson = new clonedConstructor("Jane", 25);
 
     expect(originalPerson.name).toBe("John");
     expect(originalPerson.age).toBe(30);
@@ -929,12 +929,15 @@ describe("clone", () => {
         return obj[prop] + " World";
       },
     };
-    const proxy = new Proxy(target, handler);
 
+    const proxy = new Proxy(target, handler);
     const snapshot = clone(proxy);
 
-    expect(snapshot).toEqual({ message: "Hello World", value: "42 World" });
     expect(snapshot).not.toBe(proxy);
+    expect(snapshot.message).toBe("Hello World");
+    expect(snapshot.value).toBe("42 World");
+
+    expect(snapshot).toEqual({ message: "Hello World", value: "42 World" });
   });
 
   it("should handle objects with non-configurable or non-writable properties", () => {
@@ -953,7 +956,7 @@ describe("clone", () => {
       writable: true,
     });
 
-    const snapshot = clone(obj)
+    const snapshot = clone(obj);
 
     const readOnlyDesc = Object.getOwnPropertyDescriptor(snapshot, "readOnly");
     const sealedDesc = Object.getOwnPropertyDescriptor(snapshot, "sealed");
@@ -974,5 +977,199 @@ describe("clone", () => {
     expect(snapshot.b).toBe(null);
     expect(snapshot.c).toBe(0);
     expect(snapshot.d).toBe("");
+  });
+
+  it("should handle comprehensive object with all data types", () => {
+    const x = clone({
+      a: 1,
+      b: [1, 2, 3],
+      c: { d: "test", e: new Date() },
+      f: new Map([["key", "value"]]),
+      g: new Set([1, 2, 3]),
+      h: new URL("https://example.com"),
+      i: new URLSearchParams("a=1&b=2"),
+      j: new Error("Test error"),
+      k: new Uint8Array([1, 2, 3]),
+      l: new DataView(new ArrayBuffer(8)),
+      m: new FormData(),
+      n: function testFunc() {
+        return "Hello";
+      },
+      o: new Blob(["Hello, world!"], { type: "text/plain" }),
+      p: new Int32Array([1, 2, 3]),
+      q: new BigInt64Array([BigInt(1), BigInt(2), BigInt(3)]),
+      r: new Float64Array([1.1, 2.2, 3.3]),
+      s: new BigUint64Array([BigInt(1), BigInt(2), BigInt(3)]),
+      t: new Uint8ClampedArray([1, 2, 3]),
+      u: new Uint16Array([1, 2, 3]),
+      v: new Uint32Array([1, 2, 3]),
+      w: new Int16Array([1, 2, 3]),
+      x: new Int32Array([1, 2, 3]),
+      y: new Float32Array([1.1, 2.2, 3.3]),
+      z: new WeakMap([[{ key: "value" }, "weak"]]),
+    });
+
+    // Test primitive values
+    expect(x.a).toBe(1);
+
+    // Test array cloning
+    expect(x.b).toEqual([1, 2, 3]);
+    expect(Array.isArray(x.b)).toBe(true);
+
+    // Test nested object
+    expect(x.c.d).toBe("test");
+    expect(x.c.e instanceof Date).toBe(true);
+
+    // Test Map
+    expect(x.f instanceof Map).toBe(true);
+    expect(x.f.get("key")).toBe("value");
+
+    // Test Set
+    expect(x.g instanceof Set).toBe(true);
+    expect(x.g.has(1)).toBe(true);
+    expect(x.g.has(2)).toBe(true);
+    expect(x.g.has(3)).toBe(true);
+
+    // Test URL
+    expect(x.h instanceof URL).toBe(true);
+    expect(x.h.href).toBe("https://example.com/");
+
+    // Test URLSearchParams
+    expect(x.i instanceof URLSearchParams).toBe(true);
+    expect(x.i.get("a")).toBe("1");
+    expect(x.i.get("b")).toBe("2");
+
+    // Test Error
+    expect(x.j instanceof Error).toBe(true);
+    expect(x.j.message).toBe("Test error");
+
+    // Test Uint8Array
+    expect(x.k instanceof Uint8Array).toBe(true);
+    expect([...x.k]).toEqual([1, 2, 3]);
+
+    // Test DataView
+    expect(x.l instanceof DataView).toBe(true);
+    expect(x.l.byteLength).toBe(8);
+
+    // Test FormData (cloned as regular object)
+    expect(x.m).toBeDefined();
+
+    // Test function
+    expect(typeof x.n).toBe("function");
+    expect(x.n()).toBe("Hello");
+
+    // Test Blob (cloned as regular object)
+    expect(x.o).toBeDefined();
+
+    // Test Int32Array
+    expect(x.p instanceof Int32Array).toBe(true);
+    expect([...x.p]).toEqual([1, 2, 3]);
+
+    // Test BigInt64Array
+    expect(x.q instanceof BigInt64Array).toBe(true);
+    expect([...x.q]).toEqual([BigInt(1), BigInt(2), BigInt(3)]);
+
+    // Test Float64Array
+    expect(x.r instanceof Float64Array).toBe(true);
+    expect([...x.r]).toEqual([1.1, 2.2, 3.3]);
+
+    // Test BigUint64Array
+    expect(x.s instanceof BigUint64Array).toBe(true);
+    expect([...x.s]).toEqual([BigInt(1), BigInt(2), BigInt(3)]);
+
+    // Test Uint8ClampedArray
+    expect(x.t instanceof Uint8ClampedArray).toBe(true);
+    expect([...x.t]).toEqual([1, 2, 3]);
+
+    // Test Uint16Array
+    expect(x.u instanceof Uint16Array).toBe(true);
+    expect([...x.u]).toEqual([1, 2, 3]);
+
+    // Test Uint32Array
+    expect(x.v instanceof Uint32Array).toBe(true);
+    expect([...x.v]).toEqual([1, 2, 3]);
+
+    // Test Int16Array
+    expect(x.w instanceof Int16Array).toBe(true);
+    expect([...x.w]).toEqual([1, 2, 3]);
+
+    // Test Int32Array (second instance)
+    expect(x.x instanceof Int32Array).toBe(true);
+    expect([...x.x]).toEqual([1, 2, 3]);
+
+    // Test Float32Array
+    expect(x.y instanceof Float32Array).toBe(true);
+    expect([...x.y]).toEqual([
+      1.100000023841858, 2.200000047683716, 3.299999952316284,
+    ]); // Float32 precision
+
+    // Test WeakMap (cloned as regular object)
+    expect(x.z).toBeDefined();
+  });
+
+  it("should test CloneRegistry hasHandler method", () => {
+    const registry = new CloneRegistry();
+    expect(registry.hasHandler(Date)).toBe(false);
+
+    registry.setHandler(Date, Handlers.Date);
+    expect(registry.hasHandler(Date)).toBe(true);
+  });
+
+  it("should clone File objects correctly", () => {
+    const originalFile = new File(["Hello, world!"], "test.txt", {
+      lastModified: 1672531200000,
+      type: "text/plain",
+    });
+
+    const clonedFile = clone(originalFile);
+
+    expect(clonedFile).not.toBe(originalFile);
+    expect(clonedFile instanceof File).toBe(true);
+    expect(clonedFile.name).toBe("test.txt");
+    expect(clonedFile.type).toBe("text/plain");
+    expect(clonedFile.lastModified).toBe(1672531200000);
+    expect(clonedFile.size).toBe(originalFile.size);
+  });
+
+  it("should clone FormData objects correctly", () => {
+    const originalFormData = new FormData();
+    originalFormData.append("name", "John Doe");
+    originalFormData.append("email", "john@example.com");
+    originalFormData.append("age", "30");
+
+    const clonedFormData = clone(originalFormData);
+
+    expect(clonedFormData).not.toBe(originalFormData);
+    expect(clonedFormData instanceof FormData).toBe(true);
+    expect(clonedFormData.get("name")).toBe("John Doe");
+    expect(clonedFormData.get("email")).toBe("john@example.com");
+    expect(clonedFormData.get("age")).toBe("30");
+
+    originalFormData.set("name", "Jane Doe");
+    expect(clonedFormData.get("name")).toBe("John Doe");
+  });
+
+  it("should test createCloneFunction without registryModifier", () => {
+    const customClone = createCloneFunction();
+
+    const obj = { a: 1, b: [2, 3] };
+    const cloned = customClone(obj);
+
+    expect(cloned).toEqual(obj);
+    expect(cloned).not.toBe(obj);
+    expect(cloned.b).not.toBe(obj.b);
+  });
+
+  it("should test createCloneFunction with registryModifier", () => {
+    const customClone = createCloneFunction((registry) => {
+      registry.setHandler(String, (value) => `custom-${value}`);
+    });
+
+    const obj = { num: 42, text: new String("hello") };
+    const cloned = customClone(obj);
+
+    expect(cloned.text).toBe("custom-hello");
+    expect(cloned.num).toBe(42);
+    expect(cloned).not.toBe(obj);
   });
 });

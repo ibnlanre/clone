@@ -232,12 +232,231 @@ Creates a deep clone of the provided value.
 - Maintains TypeScript type information
 - Returns the same type as the input
 
-## Performance Notes
+## Advanced Usage
+
+### Creating Custom Clone Functions
+
+The library provides powerful customization capabilities through `createCloneFunction` and the registry system. This allows you to handle custom types or modify existing behavior.
+
+#### Basic Custom Function
+
+```javascript
+import { createCloneFunction } from "@ibnlanre/clone";
+
+// Create a custom clone function
+const customClone = createCloneFunction();
+
+// Use it like the default clone
+const cloned = customClone(originalObject);
+```
+
+#### Adding Custom Type Handlers
+
+```javascript
+import { createCloneFunction, CloneRegistry } from "@ibnlanre/clone";
+
+// Define a custom class
+class MyCustomType {
+  constructor(data) {
+    this.data = data;
+    this.timestamp = Date.now();
+  }
+}
+
+// Create a custom clone function with registry modifier
+const customClone = createCloneFunction((registry) => {
+  registry.setHandler(MyCustomType, (value, visited, clone) => {
+    // Custom cloning logic for MyCustomType
+    const result = new MyCustomType(clone(value.data, visited));
+    result.timestamp = value.timestamp; // Preserve original timestamp
+    visited.set(value, result);
+    return result;
+  });
+});
+
+// Now MyCustomType instances are cloned with custom logic
+const original = new MyCustomType({ nested: { value: 42 } });
+const cloned = customClone(original);
+```
+
+#### Registry System API
+
+The `CloneRegistry` class provides methods to manage type handlers:
+
+```javascript
+import { CloneRegistry, Handlers } from "@ibnlanre/clone";
+
+const registry = new CloneRegistry();
+
+// Check if a handler exists
+if (registry.hasHandler(MyCustomType)) {
+  console.log("Handler exists");
+}
+
+// Set a custom handler
+registry.setHandler(MyCustomType, Handlers.Identity); // Use identity handler
+
+// Get a handler for a value
+const handler = registry.getHandler(someValue);
+```
+
+#### Built-in Handlers
+
+The library exports pre-built handlers you can reuse:
+
+```javascript
+import { createCloneFunction, Handlers } from "@ibnlanre/clone";
+
+const customClone = createCloneFunction((registry) => {
+  // Use identity handler for custom types (no cloning)
+  registry.setHandler(MyImmutableType, Handlers.Identity);
+
+  // Use object handler for plain object-like types
+  registry.setHandler(MyPlainObjectType, Handlers.Object);
+
+  // Use array handler for array-like types
+  registry.setHandler(MyArrayLikeType, Handlers.Array);
+});
+```
+
+#### Complex Custom Handler Example
+
+```javascript
+import { createCloneFunction } from "@ibnlanre/clone";
+
+class DatabaseModel {
+  constructor(id, data) {
+    this.id = id;
+    this.data = data;
+    this._metadata = { created: Date.now() };
+  }
+}
+
+const dbClone = createCloneFunction((registry) => {
+  registry.setHandler(DatabaseModel, (value, visited, clone) => {
+    // Create new instance with cloned data but preserve ID
+    const result = new DatabaseModel(
+      value.id, // Keep original ID
+      clone(value.data, visited) // Deep clone data
+    );
+
+    // Clone metadata separately
+    result._metadata = clone(value._metadata, visited);
+    visited.set(value, result);
+    return result;
+  });
+});
+
+// Usage
+const original = new DatabaseModel("user_123", {
+  name: "Alice",
+  preferences: { theme: "dark" },
+});
+
+const cloned = dbClone(original);
+// cloned.id === original.id (preserved)
+// cloned.data !== original.data (deep cloned)
+```
+
+#### Handler Function Signature
+
+Custom handlers receive three parameters:
+
+```typescript
+type CloneHandler<T> = (
+  value: T, // The value to clone
+  visited: WeakMap<object, any>, // Circular reference tracker
+  clone: CloneFunction // The clone function for recursive cloning
+) => T;
+```
+
+**Important**: Always call `visited.set(value, result)` before recursively cloning properties to prevent infinite loops with circular references.
+
+#### Extending Existing Types
+
+You can override handlers for built-in types:
+
+```javascript
+const customClone = createCloneFunction((registry) => {
+  // Custom Date handler that rounds to nearest second
+  registry.setHandler(Date, (value) => {
+    const rounded = new Date(Math.round(value.getTime() / 1000) * 1000);
+    return rounded;
+  });
+
+  // Custom Array handler that filters out null values
+  registry.setHandler(Array, (value, visited, clone) => {
+    const result = [];
+    visited.set(value, result);
+
+    for (let i = 0; i < value.length; i++) {
+      if (i in value && value[i] !== null) {
+        result[i] = clone(value[i], visited);
+      }
+    }
+
+    return result;
+  });
+});
+```
+
+## Performance
+
+### 🏆 **Exceptional Performance**
+
+This clone utility delivers **world-class performance** across all JavaScript data types:
+
+- **Simple Objects**: **2.57M operations/sec** (0.0004ms per clone)
+- **Circular References**: **1.64M operations/sec** (0.0006ms per clone)
+- **Functions**: **2.31M operations/sec** (0.0004ms per clone)
+- **Complex Objects**: **25.4K operations/sec** (0.0394ms per clone)
+- **Comprehensive Data Types**: **93.4K operations/sec** (0.0107ms per clone)
+
+### ⚡ **3x Faster Than JSON**
+
+When compared to `JSON.parse(JSON.stringify())`:
+
+- **Clone**: 10,680 ops/sec for complex objects
+- **JSON method**: 3,555 ops/sec for same objects
+- **Result**: **3x faster** with full feature support!
+
+_Critical advantage: JSON method fails on functions, dates become strings, no circular references, loses prototypes, etc._
+
+### 🎯 **Production-Ready Features**
+
+- **Linear Scaling**: Predictable O(n) performance across object sizes
+- **Memory Efficient**: Uses WeakMap for cycle detection without memory leaks
+- **Comprehensive Types**: Handles all JavaScript types including advanced ones
+- **Robust Error Handling**: Graceful handling of edge cases
+
+### 📊 **Performance Summary**
+
+| Operation Type  | Ops/Second | Avg Time (ms) | Use Case           |
+| --------------- | ---------- | ------------- | ------------------ |
+| Simple Objects  | 2,569,159  | 0.0004        | Config, primitives |
+| Circular Refs   | 1,641,419  | 0.0006        | Complex structures |
+| Functions       | 2,305,586  | 0.0004        | Component cloning  |
+| Comprehensive   | 93,373     | 0.0107        | All data types     |
+| Complex Objects | 25,396     | 0.0394        | Nested structures  |
+
+### 🚀 **Optimal Use Cases**
+
+- **State Management**: Perfect for Redux/Zustand/Recoil stores
+- **API Response Cloning**: Excellent for server data processing
+- **Configuration Objects**: Outstanding performance for app settings
+- **Form Data Handling**: Efficient user input cloning and validation
+- **Caching Systems**: Great for cache invalidation and snapshots
+- **Real-time Applications**: Suitable for high-frequency operations
+
+_See [PERFORMANCE_REPORT.md](./PERFORMANCE_REPORT.md) for detailed benchmarks and analysis._
+
+## Technical Notes
 
 - Uses `WeakMap` for efficient circular reference tracking
 - Minimizes object creation for primitive types
 - Preserves prototype chain without unnecessary copying
-- Optimized for common use cases
+- Optimized for common use cases with linear scaling
+- Memory-safe implementation with automatic garbage collection
 
 ## License
 

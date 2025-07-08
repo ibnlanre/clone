@@ -1,5 +1,6 @@
-import { version, description } from "./package.json";
 import { defineConfig } from "tsup";
+
+import { description, version } from "./package.json";
 
 const banner = `/*!
  * @ibnlanre/clone-v${version}
@@ -10,14 +11,12 @@ const banner = `/*!
  */`;
 
 export default defineConfig({
-  entry: ["./index.ts"],
-  outDir: "./",
-  format: ["cjs", "esm"],
+  banner: { js: banner },
+  clean: true,
   dts: true,
-  clean: false,
+  entry: ["./index.ts"],
+  format: ["cjs", "esm"],
+  minify: "terser",
+  outDir: "./dist",
   sourcemap: true,
-  minify: true,
-  banner: {
-    js: banner,
-  },
 });
