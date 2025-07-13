@@ -1172,4 +1172,192 @@ describe("clone", () => {
     expect(cloned.num).toBe(42);
     expect(cloned).not.toBe(obj);
   });
+
+  it("should clone different function types correctly", () => {
+    function regularFunction(x: number) {
+      return x * 2;
+    }
+    regularFunction.customProp = "regular";
+
+    const clonedRegular = clone(regularFunction);
+    expect(typeof clonedRegular).toBe("function");
+    expect(clonedRegular.constructor.name).toBe("Function");
+    expect(clonedRegular).not.toBe(regularFunction);
+    expect(clonedRegular.customProp).toBe("regular");
+    expect(clonedRegular(5)).toBe(10);
+
+    async function asyncFunction(x: string) {
+      return `Hello ${x}`;
+    }
+    asyncFunction.customProp = "async";
+
+    const clonedAsync = clone(asyncFunction);
+    expect(typeof clonedAsync).toBe("function");
+    expect(clonedAsync.constructor.name).toBe("AsyncFunction");
+    expect(clonedAsync).not.toBe(asyncFunction);
+    expect(clonedAsync.customProp).toBe("async");
+
+    return Promise.all([
+      asyncFunction("World").then((result) =>
+        expect(result).toBe("Hello World")
+      ),
+      clonedAsync("Clone").then((result) => expect(result).toBe("Hello Clone")),
+    ]);
+  });
+
+  it("should clone generator functions correctly", () => {
+    function* generatorFunction() {
+      yield 1;
+      yield 2;
+      yield 3;
+    }
+    generatorFunction.customProp = "generator";
+
+    const clonedGenerator = clone(generatorFunction);
+    expect(typeof clonedGenerator).toBe("function");
+    expect(clonedGenerator.constructor.name).toBe("GeneratorFunction");
+    expect(clonedGenerator).not.toBe(generatorFunction);
+    expect(clonedGenerator.customProp).toBe("generator");
+
+    const originalGen = generatorFunction();
+    const clonedGen = clonedGenerator();
+
+    expect(originalGen.next().value).toBe(1);
+    expect(clonedGen.next().value).toBe(1);
+    expect(originalGen.next().value).toBe(2);
+    expect(clonedGen.next().value).toBe(2);
+  });
+
+  it("should clone async generator functions", () => {
+    async function* asyncGeneratorFunction() {
+      yield "first";
+      yield "second";
+      yield "third";
+    }
+    asyncGeneratorFunction.customProp = "asyncGenerator";
+
+    const clonedAsyncGenerator = clone(asyncGeneratorFunction);
+    expect(clonedAsyncGenerator.constructor.name).toBe(
+      "AsyncGeneratorFunction"
+    );
+    expect(clonedAsyncGenerator).not.toBe(asyncGeneratorFunction);
+    expect(clonedAsyncGenerator.customProp).toBe("asyncGenerator");
+
+    if (typeof clonedAsyncGenerator === "function") {
+      return (async () => {
+        const originalGen = asyncGeneratorFunction();
+        const clonedGen = clonedAsyncGenerator();
+
+        const originalFirst = await originalGen.next();
+        const clonedFirst = await clonedGen.next();
+
+        expect(originalFirst.value).toBe("first");
+        expect(clonedFirst.value).toBe("first");
+        expect(originalFirst.done).toBe(false);
+        expect(clonedFirst.done).toBe(false);
+      })();
+    } else {
+      expect((clonedAsyncGenerator as any).constructor.name).toBe(
+        "AsyncGeneratorFunction"
+      );
+      expect((clonedAsyncGenerator as any).customProp).toBe("asyncGenerator");
+    }
+  });
+  describe("Constructor call coverage", () => {
+    it("should handle async function behavior", async () => {
+      async function AsyncFunction(name: string) {
+        return { name, type: "async" };
+      }
+
+      const clonedAsyncFunction = clone(AsyncFunction);
+      expect(typeof clonedAsyncFunction).toBe("function");
+
+      const result = await clonedAsyncFunction("test");
+      expect(result.name).toBe("test");
+      expect(result.type).toBe("async");
+    });
+
+    it("should handle generator function behavior", () => {
+      function* GeneratorFunction(name: string) {
+        yield name;
+        yield "generated";
+        return { name, type: "generator" };
+      }
+      const clonedGeneratorFunction = clone(GeneratorFunction);
+
+      const gen = clonedGeneratorFunction("test");
+      expect(typeof gen.next).toBe("function");
+      expect(gen.next().value).toBe("test");
+      expect(gen.next().value).toBe("generated");
+
+      const result = gen.next();
+      expect(result.done).toBe(true);
+      if (result.value && typeof result.value === "object") {
+        expect((result.value as any).name).toBe("test");
+      }
+    });
+
+    it("should handle async generator function behavior", async () => {
+      async function* AsyncGeneratorFunction(name: string) {
+        yield name;
+        yield "async-generated";
+        return { name, type: "async-generator" };
+      }
+      const clonedAsyncGeneratorFunction = clone(AsyncGeneratorFunction);
+
+      const asyncGen = clonedAsyncGeneratorFunction("test");
+      expect(typeof asyncGen.next).toBe("function");
+
+      const first = await asyncGen.next();
+      expect(first.value).toBe("test");
+
+      const second = await asyncGen.next();
+      expect(second.value).toBe("async-generated");
+    });
+
+    it("should test edge cases in isNonObject function", () => {
+      function TestFunction() {
+        return "string";
+      }
+      function TestFunction2() {
+        return { object: true };
+      }
+      function TestFunction3() {
+        return function () {};
+      }
+
+      const cloned1 = clone(TestFunction);
+      const cloned2 = clone(TestFunction2);
+      const cloned3 = clone(TestFunction3);
+
+      expect(typeof cloned1).toBe("function");
+      expect(typeof cloned2).toBe("function");
+      expect(typeof cloned3).toBe("function");
+    });
+
+    it("should handle function constructor scenarios when functions are used as constructors", () => {
+      function ConstructorFunction(this: any, name: string) {
+        this.name = name;
+      }
+      ConstructorFunction.prototype.getName = function () {
+        return this.name;
+      };
+
+      const clonedConstructor = clone(ConstructorFunction);
+      expect(clonedConstructor.prototype).toBeDefined();
+      expect(typeof clonedConstructor.prototype.getName).toBe("function");
+    });
+
+    it("should handle async function constructor scenarios", async () => {
+      async function AsyncConstructorFunction(this: any, name: string) {
+        this.name = name;
+        return this;
+      }
+
+      const clonedAsyncConstructor = clone(AsyncConstructorFunction);
+      const result = await clonedAsyncConstructor.call({}, "test");
+
+      expect(result.name).toBe("test");
+    });
+  });
 });
