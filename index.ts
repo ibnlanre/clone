@@ -164,6 +164,21 @@ export const Handlers = {
     copyProperties(result, value, visited, clone);
     return result;
   },
+  Promise: (
+    value: Promise<any>,
+    visited: WeakMap<object, any>,
+    clone: CloneFunction
+  ): Promise<any> => {
+    const result = new Promise((resolve, reject) => {
+      value.then(
+        (resolved) => resolve(clone(resolved, visited)),
+        (error) => reject(clone(error, visited))
+      );
+    });
+
+    copyProperties(result, value, visited, clone);
+    return result;
+  },
   RegExp: (value: RegExp) => new RegExp(value.source, value.flags),
   Set: <T>(
     value: Set<T>,
@@ -389,6 +404,7 @@ function createDefaultRegistry(): CloneRegistry {
     .setHandler(FormData, Handlers.FormData)
     .setHandler(Blob, Handlers.Blob)
     .setHandler(File, Handlers.File)
+    .setHandler(Promise, Handlers.Promise)
     .setHandler(Object, Handlers.Object);
 
   registerFunctionConstructors(registry);

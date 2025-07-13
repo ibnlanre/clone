@@ -1,3 +1,4 @@
+import { fail } from "assert";
 import { describe, expect, it } from "vitest";
 
 import clone, { CloneRegistry, createCloneFunction, Handlers } from "./index";
@@ -1358,6 +1359,225 @@ describe("clone", () => {
       const result = await clonedAsyncConstructor.call({}, "test");
 
       expect(result.name).toBe("test");
+    });
+  });
+
+  // Tests for Promise functionality
+  describe("Promise cloning", () => {
+    it("should clone resolved promises", async () => {
+      const originalPromise = Promise.resolve("resolved value");
+      const clonedPromise = clone(originalPromise);
+
+      expect(clonedPromise).not.toBe(originalPromise);
+      expect(clonedPromise).toBeInstanceOf(Promise);
+
+      const result = await clonedPromise;
+      expect(result).toBe("resolved value");
+    });
+
+    it("should clone rejected promises", async () => {
+      const originalPromise = Promise.reject(new Error("rejection reason"));
+      const clonedPromise = clone(originalPromise);
+
+      expect(clonedPromise).not.toBe(originalPromise);
+      expect(clonedPromise).toBeInstanceOf(Promise);
+
+      try {
+        await clonedPromise;
+        fail("Promise should have been rejected");
+      } catch (error) {
+        expect(error).toBeInstanceOf(Error);
+        expect((error as Error).message).toBe("rejection reason");
+      }
+    });
+
+    it("should clone promises with object values", async () => {
+      const originalObject = { name: "test", value: 42 };
+      const originalPromise = Promise.resolve(originalObject);
+      const clonedPromise = clone(originalPromise);
+
+      expect(clonedPromise).not.toBe(originalPromise);
+
+      const result = await clonedPromise;
+      expect(result).toEqual(originalObject);
+      expect(result).not.toBe(originalObject); // Should be a clone of the resolved value
+    });
+
+    it("should clone promises with nested objects", async () => {
+      const nestedObject = {
+        items: [1, 2, { id: 3, name: "item3" }],
+        user: {
+          name: "John",
+          preferences: { notifications: true, theme: "dark" },
+        },
+      };
+      const originalPromise = Promise.resolve(nestedObject);
+      const clonedPromise = clone(originalPromise);
+
+      const result = await clonedPromise;
+      expect(result).toEqual(nestedObject);
+      expect(result).not.toBe(nestedObject);
+      expect(result.user).not.toBe(nestedObject.user);
+      expect(result.items).not.toBe(nestedObject.items);
+      expect(result.items[2]).not.toBe(nestedObject.items[2]);
+    });
+
+    it("should handle promises with circular reference objects", async () => {
+      const obj: any = { name: "circular" };
+      obj.self = obj;
+      const originalPromise = Promise.resolve(obj);
+      const clonedPromise = clone(originalPromise);
+
+      const result = await clonedPromise;
+      expect(result).not.toBe(obj);
+      expect(result.name).toBe("circular");
+      expect(result.self).toBe(result); // Circular reference preserved in clone
+    });
+
+    it("should clone pending promises", async () => {
+      let resolver: (value: string) => void;
+      const originalPromise = new Promise<string>((resolve) => {
+        resolver = resolve;
+      });
+
+      const clonedPromise = clone(originalPromise);
+      expect(clonedPromise).not.toBe(originalPromise);
+      expect(clonedPromise).toBeInstanceOf(Promise);
+
+      resolver!("delayed value");
+
+      const result = await clonedPromise;
+      expect(result).toBe("delayed value");
+    });
+
+    it("should clone promise chains", async () => {
+      const originalPromise = Promise.resolve(10)
+        .then((x) => x * 2)
+        .then((x) => ({ value: x }));
+
+      const clonedPromise = clone(originalPromise);
+
+      expect(clonedPromise).not.toBe(originalPromise);
+
+      const result = await clonedPromise;
+      expect(result.value).toBe(20);
+    });
+
+    it("should handle promise with Error objects", async () => {
+      const customError = new Error("Custom error");
+      customError.name = "CustomError";
+      (customError as any).code = 500;
+
+      const originalPromise = Promise.reject(customError);
+      const clonedPromise = clone(originalPromise);
+
+      try {
+        await clonedPromise;
+        fail("Promise should have been rejected");
+      } catch (error) {
+        expect(error).not.toBe(customError);
+        expect(error).toBeInstanceOf(Error);
+        expect((error as Error).message).toBe("Custom error");
+        expect((error as Error).name).toBe("CustomError");
+        expect((error as any).code).toBe(500);
+      }
+    });
+
+    it("should handle promises in objects with circular references", async () => {
+      const promise1 = Promise.resolve("value1");
+      const promise2 = Promise.resolve("value2");
+
+      const container: any = {
+        name: "container",
+        promises: { p1: promise1, p2: promise2 },
+      };
+      container.self = container;
+
+      const clonedContainer = clone(container);
+
+      expect(clonedContainer).not.toBe(container);
+      expect(clonedContainer.promises.p1).not.toBe(promise1);
+      expect(clonedContainer.promises.p2).not.toBe(promise2);
+      expect(clonedContainer.self).toBe(clonedContainer);
+
+      const result1 = await clonedContainer.promises.p1;
+      const result2 = await clonedContainer.promises.p2;
+      expect(result1).toBe("value1");
+      expect(result2).toBe("value2");
+    });
+
+    it("should handle promise-like objects (thenables)", async () => {
+      const thenable = {
+        then(onResolve: (value: string) => void) {
+          onResolve("thenable value");
+        },
+      };
+
+      const cloned = clone(thenable);
+      expect(cloned).not.toBe(thenable);
+      expect(cloned).not.toBeInstanceOf(Promise);
+      expect(typeof cloned.then).toBe("function");
+    });
+
+    it("should handle promises with Map and Set values", async () => {
+      const map = new Map<string, string | { nested: boolean }>([
+        ["key1", "value1"],
+        ["key2", { nested: true }],
+      ]);
+      const set = new Set([1, 2, { item: "test" }]);
+
+      const originalPromise = Promise.resolve({ map, set });
+      const clonedPromise = clone(originalPromise);
+
+      const result = await clonedPromise;
+      expect(result.map).not.toBe(map);
+      expect(result.set).not.toBe(set);
+      expect(result.map).toBeInstanceOf(Map);
+      expect(result.set).toBeInstanceOf(Set);
+      expect(result.map.get("key1")).toBe("value1");
+      expect(result.set.has(1)).toBe(true);
+    });
+
+    it("should preserve promise properties", async () => {
+      const originalPromise = Promise.resolve("test");
+      (originalPromise as any).customProperty = "custom value";
+      (originalPromise as any).metadata = { id: 123 };
+
+      const clonedPromise = clone(originalPromise);
+
+      expect((clonedPromise as any).customProperty).toBe("custom value");
+      expect((clonedPromise as any).metadata).toEqual({ id: 123 });
+      expect((clonedPromise as any).metadata).not.toBe(
+        (originalPromise as any).metadata
+      );
+
+      const result = await clonedPromise;
+      expect(result).toBe("test");
+    });
+
+    it("should handle multiple cloning of the same promise", async () => {
+      const originalPromise = Promise.resolve({ shared: "value" });
+
+      const container = {
+        promise1: originalPromise,
+        promise2: originalPromise,
+        promise3: originalPromise,
+      };
+
+      const clonedContainer = clone(container);
+
+      expect(clonedContainer.promise1).not.toBe(originalPromise);
+      expect(clonedContainer.promise2).not.toBe(originalPromise);
+      expect(clonedContainer.promise3).not.toBe(originalPromise);
+
+      expect(clonedContainer.promise1).toBe(clonedContainer.promise2);
+      expect(clonedContainer.promise1).toBe(clonedContainer.promise3);
+
+      const result1 = await clonedContainer.promise1;
+      const result2 = await clonedContainer.promise2;
+
+      expect(result1).toEqual(result2);
+      expect(result1).toBe(result2);
     });
   });
 });
