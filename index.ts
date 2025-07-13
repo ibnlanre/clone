@@ -509,6 +509,7 @@ function registerWeakCollections(registry: CloneRegistry) {
  * @param value The original function to clone
  * @param result The new function instance that will receive the properties
  * @param visited A WeakMap to track visited objects for circular references
+ * @param clone The clone function to handle cloning of values
  *
  * @returns The new function with cloned properties
  */
@@ -522,11 +523,6 @@ const cloneFunctionProperties = (
 
   if (value.prototype) {
     Object.assign(result.prototype, value.prototype);
-    Object.defineProperty(result.prototype, "constructor", {
-      configurable: true,
-      value: result,
-      writable: true,
-    });
   }
 
   copyProperties(result, value, visited, clone);
