@@ -6,8 +6,7 @@
   "module": "dist/index.js",
   "main": "dist/index.cjs",
   "files": [
-    "dist",
-    "*.md"
+    "dist"
   ],
   "scripts": {
     "build": "tsup",
@@ -31,7 +30,11 @@
   "keywords": [
     "clone",
     "copy",
-    "slice"
+    "slice",
+    "klona",
+    "fast",
+    "deep",
+    "rfdc"
   ],
   "author": {
     "name": "Ridwan Olanrewaju",

@@ -2,7 +2,7 @@ import { defineConfig } from "tsup";
 
 import { description, name, version } from "./package.json";
 
-const banner = `/*!
+const js = `/*!
  * @ibnlanre/clone-v${version}
  * ${description}
  * 
@@ -11,7 +11,7 @@ const banner = `/*!
  */`;
 
 export default defineConfig({
-  banner: { js: banner },
+  banner: { js },
   clean: true,
   dts: true,
   entry: ["./index.ts"],
@@ -19,5 +19,8 @@ export default defineConfig({
   minify: true,
   name,
   outDir: "./dist",
+  platform: "browser",
   sourcemap: true,
+  target: "es2022",
+  treeshake: true,
 });

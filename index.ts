@@ -8,6 +8,7 @@ export type CloneHandler<Value = any, Result = Value> = (
   clone: CloneFunction
 ) => Result;
 export type CloneRegistryModifier = (registry: CloneRegistry) => void;
+export type CloneValidator = (value: any) => boolean;
 export type Constructor<T = any> = new (...args: any[]) => T;
 
 /**
@@ -19,20 +20,25 @@ export type Constructor<T = any> = new (...args: any[]) => T;
  */
 export class CloneRegistry {
   private handlers: WeakMap<any, CloneHandler> = new WeakMap();
+  private validators: WeakMap<any, CloneValidator> = new WeakMap();
 
   /**
    * Get a clone handler for a specific value
    *
    * @description
    * This method retrieves the appropriate clone handler for the given value based on its constructor.
-   * If no handler is found, it returns null.
+   * If no handler is found, it returns null. If no validator is found, it returns true.
    *
    * @param value The value for which to get the handler
    * @returns The clone handler for the value or null if not found
    */
-  getHandler(value: any): CloneHandler | null {
-    const constructor = value?.constructor;
-    return this.handlers.get(constructor) ?? null;
+  getHandler(value: any): [CloneHandler | null, CloneValidator] {
+    const constructor = getConstructor(value);
+
+    return [
+      this.handlers.get(constructor) ?? null,
+      this.validators.get(constructor) ?? (() => true),
+    ];
   }
 
   /**
@@ -53,21 +59,69 @@ export class CloneRegistry {
    * Register a handler for a specific constructor
    *
    * @description
-   * This method registers a clone handler for the specified constructor.
+   * This method registers a clone handler and a validator function for the specified constructor.
    * It allows the clone function to use the handler when cloning instances of that constructor.
+   * The validator is used to check if a value is of the expected type before cloning.
    *
    * @param constructor The constructor for which to register the handler
    * @param handler The clone handler to register
+   * @param validator The validator function to register
+   *
    * @returns The CloneRegistry instance for method chaining
    */
   setHandler<T>(
     constructor: Constructor<T> | Function,
-    handler: CloneHandler<T>
+    handler: CloneHandler<T>,
+    validator?: CloneValidator
   ) {
     this.handlers.set(constructor, handler);
+
+    if (validator) {
+      this.validators.set(constructor, validator);
+    }
+
     return this;
   }
 }
+
+export const Validators = {
+  Array: (result: any): result is any[] => {
+    return Array.isArray(result);
+  },
+
+  AsyncFunction: (result: any): result is Function => {
+    return (
+      typeof result === "function" &&
+      result.constructor.name === "AsyncFunction"
+    );
+  },
+
+  AsyncGeneratorFunction: (result: any): result is Function => {
+    return (
+      typeof result === "function" &&
+      result.constructor.name === "AsyncGeneratorFunction"
+    );
+  },
+
+  Date: (result: any): result is Date => {
+    return result instanceof Date && !isNaN(result.getTime());
+  },
+
+  Function: (result: any): result is Function => {
+    return typeof result === "function";
+  },
+
+  GeneratorFunction: (result: any): result is Function => {
+    return (
+      typeof result === "function" &&
+      result.constructor.name === "GeneratorFunction"
+    );
+  },
+
+  Object: (result: any): result is object => {
+    return result !== null && typeof result === "object";
+  },
+};
 
 /**
  * Pre-built handlers for common types
@@ -402,8 +456,10 @@ export const Handlers = {
 export function createCloneFunction(
   registryModifier?: CloneRegistryModifier
 ): CloneFunction {
-  const registry = createDefaultRegistry();
+  const registry = new CloneRegistry();
+
   if (registryModifier) registryModifier(registry);
+  else createDefaultRegistry(registry);
 
   const clone: CloneFunction = <T>(
     value: T,
@@ -417,13 +473,16 @@ export function createCloneFunction(
       return visited.get(value as object);
     }
 
-    const handler = registry.getHandler(value);
+    const [handler, validator] = registry.getHandler(value);
 
-    const result = handler
-      ? handler(value, visited, clone)
-      : Handlers.Object(value);
+    if (handler) {
+      const result = handler(value, visited, clone);
+      copyProperties(result, value, visited, clone);
 
-    return copyProperties(result, value, visited, clone);
+      if (validator(result)) return result;
+    }
+
+    return value;
   };
 
   return clone;
@@ -497,13 +556,11 @@ function createAsyncInstance<T extends (...args: any[]) => Promise<any>>(
  *
  * @returns A new CloneRegistry instance with default handlers registered
  */
-function createDefaultRegistry(): CloneRegistry {
-  const registry = new CloneRegistry();
-
+function createDefaultRegistry(registry: CloneRegistry) {
   registry
-    .setHandler(Date, Handlers.Date)
+    .setHandler(Date, Handlers.Date, Validators.Date)
     .setHandler(RegExp, Handlers.RegExp)
-    .setHandler(Array, Handlers.Array)
+    .setHandler(Array, Handlers.Array, Validators.Array)
     .setHandler(Map, Handlers.Map)
     .setHandler(Set, Handlers.Set)
     .setHandler(ArrayBuffer, Handlers.ArrayBuffer)
@@ -514,8 +571,8 @@ function createDefaultRegistry(): CloneRegistry {
     .setHandler(FormData, Handlers.FormData)
     .setHandler(Blob, Handlers.Blob)
     .setHandler(File, Handlers.File)
-    .setHandler(Promise, Handlers.Promise)
-    .setHandler(Object, Handlers.Object);
+    .setHandler(Object, Handlers.Object)
+    .setHandler(Proxy, Handlers.Identity);
 
   registerFunctionConstructors(registry);
   registerTypedArrayConstructors(registry);
@@ -655,16 +712,29 @@ function isPropertyAccessor(descriptor: PropertyDescriptor) {
  * @returns Array of function constructors
  */
 function registerFunctionConstructors(registry: CloneRegistry) {
-  registry.setHandler(Function, Handlers.Function);
+  registry.setHandler(Function, Handlers.Function, Validators.Function);
+  registry.setHandler(Promise, Handlers.Promise);
 
   const AsyncFunction = getConstructor(async function () {});
-  registry.setHandler(AsyncFunction, Handlers.AsyncFunction);
+  registry.setHandler(
+    AsyncFunction,
+    Handlers.AsyncFunction,
+    Validators.AsyncFunction
+  );
 
   const GeneratorFunction = getConstructor(function* () {});
-  registry.setHandler(GeneratorFunction, Handlers.GeneratorFunction);
+  registry.setHandler(
+    GeneratorFunction,
+    Handlers.GeneratorFunction,
+    Validators.GeneratorFunction
+  );
 
   const AsyncGeneratorFunction = getConstructor(async function* () {});
-  registry.setHandler(AsyncGeneratorFunction, Handlers.AsyncGeneratorFunction);
+  registry.setHandler(
+    AsyncGeneratorFunction,
+    Handlers.AsyncGeneratorFunction,
+    Validators.AsyncGeneratorFunction
+  );
 }
 
 /**
@@ -739,7 +809,7 @@ export default clone;
  *
  * @returns The target object with copied properties
  */
-function copyProperties(
+export function copyProperties(
   result: any,
   value: any,
   visited: WeakMap<object, any>,
@@ -762,8 +832,9 @@ function copyProperties(
           key === "arguments" ||
           key === "caller" ||
           key === "callee"
-        )
+        ) {
           continue;
+        }
       }
 
       if (key === "prototype" || key === "__proto__") {
@@ -775,11 +846,7 @@ function copyProperties(
 
       if (descriptor) {
         if (isPropertyAccessor(descriptor)) {
-          try {
-            Object.defineProperty(result, key, descriptor);
-          } catch (error) {
-            console.log({ error, key, value });
-          }
+          Object.defineProperty(result, key, descriptor);
         } else {
           result[key] = clone(value[key], visited);
         }
@@ -791,7 +858,37 @@ function copyProperties(
   if (symbols.length) {
     for (let index = 0; index < symbols.length; index++) {
       const key = symbols[index];
-      result[key] = value[key];
+
+      if (
+        key === Symbol.iterator ||
+        key === Symbol.toStringTag ||
+        key === Symbol.species ||
+        key === Symbol.unscopables ||
+        key === Symbol.asyncIterator ||
+        key === Symbol.match ||
+        key === Symbol.replace ||
+        key === Symbol.search ||
+        key === Symbol.split ||
+        key === Symbol.hasInstance ||
+        key === Symbol.isConcatSpreadable ||
+        key === Symbol.toPrimitive ||
+        key === Symbol.matchAll ||
+        key === Symbol.metadata ||
+        key === Symbol.dispose ||
+        key === Symbol.asyncDispose
+      ) {
+        continue;
+      }
+
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+
+      if (descriptor) {
+        if (isPropertyAccessor(descriptor)) {
+          Object.defineProperty(result, key, descriptor);
+        } else {
+          result[key] = clone(descriptor.value, visited);
+        }
+      }
     }
   }
 
