@@ -1,3 +1,18 @@
+## [0.3.1](https://github.com/ibnlanre/clone/compare/v0.3.0...v0.3.1) (2025-07-14)
+
+
+### Bug Fixes
+
+* update clone function properties documentation and remove redundant constructor definition ([ec596f6](https://github.com/ibnlanre/clone/commit/ec596f6454b40f922b8abb1730d40242f6871565))
+
+
+### Features
+
+* add cloning support for Promise objects and related test cases ([b41471e](https://github.com/ibnlanre/clone/commit/b41471e0c134f4c97fb260870f18c2eed3be384e))
+* enhance cloning capabilities for various function types and improve registry management ([82451e0](https://github.com/ibnlanre/clone/commit/82451e02c23e0f3f7006cbeea001affb59a53546))
+
+
+
 # [0.3.0](https://github.com/ibnlanre/clone/compare/v0.2.0...v0.3.0) (2025-07-08)
 
 

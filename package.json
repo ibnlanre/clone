@@ -1,11 +1,14 @@
 {
   "name": "@ibnlanre/clone",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "A simple utility to clone primitive and reference types in JavaScript.",
   "type": "module",
   "module": "dist/index.js",
   "main": "dist/index.cjs",
-  "files": ["dist", "*.md"],
+  "files": [
+    "dist",
+    "*.md"
+  ],
   "scripts": {
     "build": "tsup",
     "benchmark": "tsx benchmark.ts",
