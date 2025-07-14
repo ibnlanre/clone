@@ -1,3 +1,13 @@
+# [0.4.0](https://github.com/ibnlanre/clone/compare/v0.3.3...v0.4.0) (2025-07-14)
+
+
+### Features
+
+* add detailed JSDoc comments for validators in the CloneRegistry ([d58f2e2](https://github.com/ibnlanre/clone/commit/d58f2e2efed699081b3a16b79e142cc54639bf13))
+* enhance clone functionality with validators and improve registry handling ([2108041](https://github.com/ibnlanre/clone/commit/210804174f1885e895cb60cbf8c076fd2ec42557))
+
+
+
 ## [0.3.3](https://github.com/ibnlanre/clone/compare/v0.3.2...v0.3.3) (2025-07-14)
 
 
