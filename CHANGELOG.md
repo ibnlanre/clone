@@ -1,3 +1,12 @@
+## [0.3.2](https://github.com/ibnlanre/clone/compare/v0.3.1...v0.3.2) (2025-07-14)
+
+
+### Bug Fixes
+
+* enhance property copying for functions in clone implementation ([18f7c09](https://github.com/ibnlanre/clone/commit/18f7c091bfb43015d746c94f92a8d7b06d25d1f5))
+
+
+
 ## [0.3.1](https://github.com/ibnlanre/clone/compare/v0.3.0...v0.3.1) (2025-07-14)
 
 
