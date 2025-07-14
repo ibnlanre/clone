@@ -1,6 +1,6 @@
 {
   "name": "@ibnlanre/clone",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "A simple utility to clone primitive and reference types in JavaScript.",
   "type": "module",
   "module": "dist/index.js",
