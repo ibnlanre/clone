@@ -9,7 +9,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && npm run check-exports",
     "benchmark": "tsx benchmark.ts",
     "coverage": "vitest run --coverage",
     "package": "npm publish --access public",

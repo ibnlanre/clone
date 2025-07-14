@@ -19,8 +19,6 @@ export default defineConfig({
   minify: true,
   name,
   outDir: "./dist",
-  platform: "browser",
   sourcemap: true,
   target: "es2022",
-  treeshake: true,
 });
