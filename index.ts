@@ -123,10 +123,7 @@ export const Handlers = {
    * @param clone The clone function to handle cloning of values
    * @returns A new async function that behaves like a constructor
    */
-  AsyncFunction: (value: Function) => {
-    const result = createAsyncInstance(value as any);
-    return result;
-  },
+  AsyncFunction: (value: Function) => createAsyncInstance(value as any),
 
   /**
    * Clones an async generator function by creating a new instance that behaves like an async generator.
@@ -225,9 +222,7 @@ export const Handlers = {
    * @param clone The clone function to handle cloning of values
    * @returns A new function that behaves like a constructor
    */
-  Function: (value: Function) => {
-    return createInstance(value);
-  },
+  Function: (value: Function) => createInstance(value),
 
   /**
    * Clones a generator function by creating a new instance that behaves like a generator.
@@ -284,9 +279,7 @@ export const Handlers = {
    * @param clone The clone function to handle cloning of values
    * @returns A new object with the same properties
    */
-  Object: (value: any) => {
-    return Object.create(Object.getPrototypeOf(value));
-  },
+  Object: (value: any) => Object.create(Object.getPrototypeOf(value)),
 
   /**
    * Clones a Promise by creating a new Promise that resolves with the cloned value.
@@ -372,9 +365,7 @@ export const Handlers = {
    * @param value The URLSearchParams to clone
    * @returns A new URLSearchParams with the same query parameters
    */
-  URLSearchParams: (value: URLSearchParams) => {
-    return new URLSearchParams(value);
-  },
+  URLSearchParams: (value: URLSearchParams) => new URLSearchParams(value),
 };
 
 /**
