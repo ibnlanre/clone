@@ -1238,57 +1238,146 @@ describe("clone", () => {
     ]);
   });
 
-  it("should clone generator functions correctly", () => {
-    function* generatorFunction() {
-      yield 1;
-      yield 2;
-      yield 3;
-    }
-    generatorFunction.customProp = "generator";
+  describe("Async Generator Function Cloning", () => {
+    it("should clone async generator functions correctly", async () => {
+      const original = async function* () {
+        yield 1;
+        yield 2;
+        yield 3;
+      };
 
-    const clonedGenerator = clone(generatorFunction);
-    expect(typeof clonedGenerator).toBe("function");
-    expect(clonedGenerator.constructor.name).toBe("GeneratorFunction");
-    expect(clonedGenerator).not.toBe(generatorFunction);
-    expect(clonedGenerator.customProp).toBe("generator");
+      const cloned = clone(original);
 
-    const originalGen = generatorFunction();
-    const clonedGen = clonedGenerator();
+      // Verify the cloned function is a function, not an object
+      expect(typeof cloned).toBe("function");
+      expect(cloned.constructor.name).toBe("AsyncGeneratorFunction");
 
-    expect(originalGen.next().value).toBe(1);
-    expect(clonedGen.next().value).toBe(1);
-    expect(originalGen.next().value).toBe(2);
-    expect(clonedGen.next().value).toBe(2);
-  });
+      // Test that the cloned function works correctly
+      const originalGen = original();
+      const clonedGen = cloned();
 
-  it("should clone async generator functions", () => {
-    async function* asyncGeneratorFunction() {
-      yield "first";
-      yield "second";
-      yield "third";
-    }
-    asyncGeneratorFunction.customProp = "asyncGenerator";
+      // Both should be async iterators
+      expect(typeof originalGen.next).toBe("function");
+      expect(typeof clonedGen.next).toBe("function");
 
-    const clonedAsyncGenerator = clone(asyncGeneratorFunction);
-    expect(typeof clonedAsyncGenerator).toBe("function");
-    expect(clonedAsyncGenerator.constructor.name).toBe(
-      "AsyncGeneratorFunction"
-    );
-    expect(clonedAsyncGenerator).not.toBe(asyncGeneratorFunction);
-    expect(clonedAsyncGenerator.customProp).toBe("asyncGenerator");
+      // Test yielding values
+      const originalResult = await originalGen.next();
+      const clonedResult = await clonedGen.next();
 
-    return (async () => {
-      const originalGen = asyncGeneratorFunction();
-      const clonedGen = clonedAsyncGenerator();
+      expect(originalResult.value).toBe(1);
+      expect(clonedResult.value).toBe(1);
+      expect(originalResult.done).toBe(false);
+      expect(clonedResult.done).toBe(false);
+    });
 
-      const originalFirst = await originalGen.next();
-      const clonedFirst = await clonedGen.next();
+    it("should clone generator functions correctly", () => {
+      function* generatorFunction() {
+        yield 1;
+        yield 2;
+        yield 3;
+      }
+      generatorFunction.customProp = "generator";
 
-      expect(originalFirst.value).toBe("first");
-      expect(clonedFirst.value).toBe("first");
-      expect(originalFirst.done).toBe(false);
-      expect(clonedFirst.done).toBe(false);
-    })();
+      const clonedGenerator = clone(generatorFunction);
+      expect(typeof clonedGenerator).toBe("function");
+      expect(clonedGenerator.constructor.name).toBe("GeneratorFunction");
+      expect(clonedGenerator).not.toBe(generatorFunction);
+      expect(clonedGenerator.customProp).toBe("generator");
+
+      const originalGen = generatorFunction();
+      const clonedGen = clonedGenerator();
+
+      expect(originalGen.next().value).toBe(1);
+      expect(clonedGen.next().value).toBe(1);
+      expect(originalGen.next().value).toBe(2);
+      expect(clonedGen.next().value).toBe(2);
+    });
+
+    it("should clone async generator functions", () => {
+      async function* asyncGeneratorFunction() {
+        yield "first";
+        yield "second";
+        yield "third";
+      }
+      asyncGeneratorFunction.customProp = "asyncGenerator";
+
+      const clonedAsyncGenerator = clone(asyncGeneratorFunction);
+      expect(typeof clonedAsyncGenerator).toBe("function");
+      expect(clonedAsyncGenerator.constructor.name).toBe(
+        "AsyncGeneratorFunction"
+      );
+      expect(clonedAsyncGenerator).not.toBe(asyncGeneratorFunction);
+      expect(clonedAsyncGenerator.customProp).toBe("asyncGenerator");
+
+      return (async () => {
+        const originalGen = asyncGeneratorFunction();
+        const clonedGen = clonedAsyncGenerator();
+
+        const originalFirst = await originalGen.next();
+        const clonedFirst = await clonedGen.next();
+
+        expect(originalFirst.value).toBe("first");
+        expect(clonedFirst.value).toBe("first");
+        expect(originalFirst.done).toBe(false);
+        expect(clonedFirst.done).toBe(false);
+      })();
+    });
+
+    it("should handle async generator functions with parameters", async () => {
+      const original = async function* (start: number, count: number) {
+        for (let i = 0; i < count; i++) {
+          yield start + i;
+        }
+      };
+
+      const cloned = clone(original);
+
+      expect(typeof cloned).toBe("function");
+      expect(cloned.constructor.name).toBe("AsyncGeneratorFunction");
+
+      // Test with parameters
+      const originalGen = original(10, 3);
+      const clonedGen = cloned(10, 3);
+
+      const originalValues: number[] = [];
+      const clonedValues: number[] = [];
+
+      for await (const value of originalGen) {
+        originalValues.push(value);
+      }
+
+      for await (const value of clonedGen) {
+        clonedValues.push(value);
+      }
+
+      expect(originalValues).toEqual([10, 11, 12]);
+      expect(clonedValues).toEqual([10, 11, 12]);
+    });
+
+    it("should preserve function properties on async generator functions", async () => {
+      const original = async function* namedAsyncGen() {
+        yield 42;
+      };
+
+      // Add custom properties
+      (original as any).customProp = "test";
+      (original as any).customMethod = () => "method result";
+
+      const cloned = clone(original);
+
+      expect(typeof cloned).toBe("function");
+      expect(cloned.constructor.name).toBe("AsyncGeneratorFunction");
+
+      // Test that properties are copied
+      expect((cloned as any).customProp).toBe("test");
+      expect((cloned as any).customMethod()).toBe("method result");
+
+      // Test that the function still works
+      const gen = cloned();
+      const result = await gen.next();
+      expect(result.value).toBe(42);
+      expect(result.done).toBe(false);
+    });
   });
 
   it("should confirm function types after cloning", async () => {

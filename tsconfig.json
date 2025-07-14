@@ -10,7 +10,7 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
-    "module": "ES2022",
+    "module": "es2022",
     "moduleResolution": "node",
     "noImplicitAny": true,
     "noImplicitReturns": true,
@@ -25,7 +25,7 @@
     "skipLibCheck": true,
     "strict": true,
     "strictNullChecks": true,
-    "target": "ES2017",
+    "target": "es2022",
     "verbatimModuleSyntax": true
   },
   "exclude": ["node_modules", "dist", "build", "coverage", "examples"],

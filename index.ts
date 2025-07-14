@@ -418,6 +418,7 @@ export function createCloneFunction(
     }
 
     const handler = registry.getHandler(value);
+
     const result = handler
       ? handler(value, visited, clone)
       : Handlers.Object(value);
@@ -578,6 +579,20 @@ function createInstance<T extends Function>(value: T) {
 }
 
 /**
+ * Get the constructor of a value
+ *
+ * @description
+ * This function retrieves the constructor of the provided value.
+ * It uses `Object.getPrototypeOf` to get the prototype and then accesses the `constructor` property.
+ *
+ * @param value The value for which to get the constructor
+ * @returns The constructor function of the value
+ */
+function getConstructor<T>(value: T): Function {
+  return Object.getPrototypeOf(value).constructor;
+}
+
+/**
  * Check if a type is not an object or function
  *
  * @description
@@ -642,13 +657,13 @@ function isPropertyAccessor(descriptor: PropertyDescriptor) {
 function registerFunctionConstructors(registry: CloneRegistry) {
   registry.setHandler(Function, Handlers.Function);
 
-  const AsyncFunction = async function () {}.constructor;
+  const AsyncFunction = getConstructor(async function () {});
   registry.setHandler(AsyncFunction, Handlers.AsyncFunction);
 
-  const GeneratorFunction = function* () {}.constructor;
+  const GeneratorFunction = getConstructor(function* () {});
   registry.setHandler(GeneratorFunction, Handlers.GeneratorFunction);
 
-  const AsyncGeneratorFunction = async function* () {}.constructor;
+  const AsyncGeneratorFunction = getConstructor(async function* () {});
   registry.setHandler(AsyncGeneratorFunction, Handlers.AsyncGeneratorFunction);
 }
 
