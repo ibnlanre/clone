@@ -739,6 +739,18 @@ function copyProperties(
     for (let index = 0; index < properties.length; index++) {
       const key = properties[index];
 
+      if (typeof value === "function") {
+        if (
+          key === "constructor" ||
+          key === "name" ||
+          key === "length" ||
+          key === "arguments" ||
+          key === "caller" ||
+          key === "callee"
+        )
+          continue;
+      }
+
       if (key === "prototype" || key === "__proto__") {
         Object.assign(result[key], value[key]);
         continue;
@@ -764,7 +776,7 @@ function copyProperties(
   if (symbols.length) {
     for (let index = 0; index < symbols.length; index++) {
       const key = symbols[index];
-      result[key] = clone(value[key], visited);
+      result[key] = value[key];
     }
   }
 

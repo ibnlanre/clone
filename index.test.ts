@@ -3,6 +3,38 @@ import { describe, expect, it } from "vitest";
 
 import clone, { CloneRegistry, createCloneFunction, Handlers } from "./index";
 
+/**
+ * Tests promise rejections by executing a promise factory function and checking if it rejects with the expected error.
+ *
+ * This function immediately adds a catch handler to the promise to prevent unhandled rejection warnings.
+ *
+ * @param promiseFactory
+ * @param expectedError
+ * @returns
+ */
+async function testPromiseRejection<T = any>(
+  promiseFactory: () => Promise<T>,
+  expectedError?: Error | string
+): Promise<Error> {
+  const promise = promiseFactory();
+  promise.catch(() => {});
+
+  try {
+    await promise;
+    fail("Promise should have been rejected");
+  } catch (error) {
+    if (expectedError) {
+      if (typeof expectedError === "string") {
+        expect(error).toBeInstanceOf(Error);
+        expect((error as Error).message).toBe(expectedError);
+      } else {
+        expect(error).toBe(expectedError);
+      }
+    }
+    return error as Error;
+  }
+}
+
 describe("clone", () => {
   it("should create a snapshot of the given state", () => {
     const state = { a: 1, b: 2, c: 3 };
@@ -1238,32 +1270,67 @@ describe("clone", () => {
     asyncGeneratorFunction.customProp = "asyncGenerator";
 
     const clonedAsyncGenerator = clone(asyncGeneratorFunction);
+    expect(typeof clonedAsyncGenerator).toBe("function");
     expect(clonedAsyncGenerator.constructor.name).toBe(
       "AsyncGeneratorFunction"
     );
     expect(clonedAsyncGenerator).not.toBe(asyncGeneratorFunction);
     expect(clonedAsyncGenerator.customProp).toBe("asyncGenerator");
 
-    if (typeof clonedAsyncGenerator === "function") {
-      return (async () => {
-        const originalGen = asyncGeneratorFunction();
-        const clonedGen = clonedAsyncGenerator();
+    return (async () => {
+      const originalGen = asyncGeneratorFunction();
+      const clonedGen = clonedAsyncGenerator();
 
-        const originalFirst = await originalGen.next();
-        const clonedFirst = await clonedGen.next();
+      const originalFirst = await originalGen.next();
+      const clonedFirst = await clonedGen.next();
 
-        expect(originalFirst.value).toBe("first");
-        expect(clonedFirst.value).toBe("first");
-        expect(originalFirst.done).toBe(false);
-        expect(clonedFirst.done).toBe(false);
-      })();
-    } else {
-      expect((clonedAsyncGenerator as any).constructor.name).toBe(
-        "AsyncGeneratorFunction"
-      );
-      expect((clonedAsyncGenerator as any).customProp).toBe("asyncGenerator");
-    }
+      expect(originalFirst.value).toBe("first");
+      expect(clonedFirst.value).toBe("first");
+      expect(originalFirst.done).toBe(false);
+      expect(clonedFirst.done).toBe(false);
+    })();
   });
+
+  it("should confirm function types after cloning", async () => {
+    // Regular function
+    function regularFunction() {
+      return "regular";
+    }
+    const clonedRegular = clone(regularFunction);
+    expect(typeof clonedRegular).toBe("function");
+
+    // Async function
+    async function asyncFunction() {
+      return "async";
+    }
+    const clonedAsync = clone(asyncFunction);
+    expect(typeof clonedAsync).toBe("function");
+
+    // Generator function
+    function* generatorFunction() {
+      yield "generator";
+    }
+    const clonedGenerator = clone(generatorFunction);
+    expect(typeof clonedGenerator).toBe("function");
+
+    // Async generator function
+    async function* asyncGeneratorFunction() {
+      yield "asyncGenerator";
+    }
+    const clonedAsyncGenerator = clone(asyncGeneratorFunction);
+    expect(typeof clonedAsyncGenerator).toBe("function");
+
+    // Verify all functions are callable and work correctly
+    expect(clonedRegular()).toBe("regular");
+    await expect(clonedAsync()).resolves.toBe("async");
+
+    const gen = clonedGenerator();
+    expect(gen.next().value).toBe("generator");
+
+    const asyncGen = clonedAsyncGenerator();
+    expect(typeof asyncGen.next).toBe("function");
+  });
+
   describe("Constructor call coverage", () => {
     it("should handle async function behavior", async () => {
       async function AsyncFunction(name: string) {
@@ -1362,7 +1429,6 @@ describe("clone", () => {
     });
   });
 
-  // Tests for Promise functionality
   describe("Promise cloning", () => {
     it("should clone resolved promises", async () => {
       const originalPromise = Promise.resolve("resolved value");
@@ -1382,13 +1448,10 @@ describe("clone", () => {
       expect(clonedPromise).not.toBe(originalPromise);
       expect(clonedPromise).toBeInstanceOf(Promise);
 
-      try {
-        await clonedPromise;
-        fail("Promise should have been rejected");
-      } catch (error) {
-        expect(error).toBeInstanceOf(Error);
-        expect((error as Error).message).toBe("rejection reason");
-      }
+      originalPromise.catch(() => {});
+      clonedPromise.catch(() => {});
+
+      await testPromiseRejection(() => clonedPromise, "rejection reason");
     });
 
     it("should clone promises with object values", async () => {
@@ -1400,7 +1463,7 @@ describe("clone", () => {
 
       const result = await clonedPromise;
       expect(result).toEqual(originalObject);
-      expect(result).not.toBe(originalObject); // Should be a clone of the resolved value
+      expect(result).not.toBe(originalObject);
     });
 
     it("should clone promises with nested objects", async () => {
@@ -1422,7 +1485,7 @@ describe("clone", () => {
       expect(result.items[2]).not.toBe(nestedObject.items[2]);
     });
 
-    it("should handle promises with circular reference objects", async () => {
+    it("should handle cloning of promises with circular references", async () => {
       const obj: any = { name: "circular" };
       obj.self = obj;
       const originalPromise = Promise.resolve(obj);
@@ -1431,7 +1494,7 @@ describe("clone", () => {
       const result = await clonedPromise;
       expect(result).not.toBe(obj);
       expect(result.name).toBe("circular");
-      expect(result.self).toBe(result); // Circular reference preserved in clone
+      expect(result.self).toBe(result);
     });
 
     it("should clone pending promises", async () => {
@@ -1470,17 +1533,13 @@ describe("clone", () => {
 
       const originalPromise = Promise.reject(customError);
       const clonedPromise = clone(originalPromise);
+      const caughtError = await testPromiseRejection(() => clonedPromise);
 
-      try {
-        await clonedPromise;
-        fail("Promise should have been rejected");
-      } catch (error) {
-        expect(error).not.toBe(customError);
-        expect(error).toBeInstanceOf(Error);
-        expect((error as Error).message).toBe("Custom error");
-        expect((error as Error).name).toBe("CustomError");
-        expect((error as any).code).toBe(500);
-      }
+      expect(caughtError).not.toBe(customError);
+      expect(caughtError).toBeInstanceOf(Error);
+      expect(caughtError.message).toBe("Custom error");
+      expect(caughtError.name).toBe("CustomError");
+      expect((caughtError as any).code).toBe(500);
     });
 
     it("should handle promises in objects with circular references", async () => {
@@ -1579,5 +1638,263 @@ describe("clone", () => {
       expect(result1).toEqual(result2);
       expect(result1).toBe(result2);
     });
+  });
+
+  describe("Debug function type verification", () => {
+    it("should debug async generator cloning step by step", () => {
+      async function* originalAsyncGen() {
+        yield "test";
+      }
+
+      const cloned = clone(originalAsyncGen);
+
+      try {
+        const gen = cloned();
+        expect(typeof gen.next).toBe("function");
+      } catch (error) {
+        fail("Cloned async generator should be callable");
+      }
+
+      expect(typeof cloned).toBe("function");
+    });
+
+    it("should verify all function types maintain typeof === 'function'", async () => {
+      function regularFunction() {
+        return "regular";
+      }
+
+      async function asyncFunction() {
+        return "async";
+      }
+
+      function* generatorFunction() {
+        yield "generator";
+      }
+
+      async function* asyncGeneratorFunction() {
+        yield "asyncGenerator";
+      }
+
+      const clonedRegular = clone(regularFunction);
+      const clonedAsync = clone(asyncFunction);
+      const clonedGenerator = clone(generatorFunction);
+      const clonedAsyncGenerator = clone(asyncGeneratorFunction);
+
+      expect(typeof clonedRegular).toBe("function");
+      expect(typeof clonedAsync).toBe("function");
+      expect(typeof clonedGenerator).toBe("function");
+      expect(typeof clonedAsyncGenerator).toBe("function");
+
+      expect(clonedRegular()).toBe("regular");
+
+      await clonedAsync().then((result) => {
+        expect(result).toBe("async");
+      });
+
+      const gen = clonedGenerator();
+      const genResult = gen.next().value;
+      expect(genResult).toBe("generator");
+
+      const asyncGen = clonedAsyncGenerator();
+      expect(typeof asyncGen.next).toBe("function");
+      const asyncResult = await asyncGen.next();
+      expect(asyncResult.value).toBe("asyncGenerator");
+
+      const allAreFunctions = [
+        clonedRegular,
+        clonedAsync,
+        clonedGenerator,
+        clonedAsyncGenerator,
+      ].every((fn) => typeof fn === "function");
+
+      expect(allAreFunctions).toBe(true);
+    });
+  });
+
+  describe("Promise functionality", () => {
+    it("should test if Promise.resolve is cloned correctly", async () => {
+      const resolvedPromise = Promise.resolve("data");
+      const clonedPromise = clone(resolvedPromise);
+
+      expect(clonedPromise).not.toBe(resolvedPromise);
+      expect(await clonedPromise).toBe("data");
+    });
+
+    it("should test if Promise.reject is cloned correctly", async () => {
+      const error = new Error("error message");
+      const rejectedPromise = Promise.reject(error);
+      const clonedPromise = clone(rejectedPromise);
+
+      expect(clonedPromise).not.toBe(rejectedPromise);
+      await testPromiseRejection(() => clonedPromise, "error message");
+    });
+
+    it("should clone a promise that resolves to an object", async () => {
+      const original = Promise.resolve({ key: "value" });
+      const cloned = clone(original);
+
+      expect(cloned).not.toBe(original);
+
+      const result = await cloned;
+      expect(result).toEqual({ key: "value" });
+    });
+
+    it("should clone a promise that resolves to a nested object", async () => {
+      const original = await Promise.resolve({
+        items: [1, 2, 3],
+        user: { id: 1, name: "John" },
+      });
+      const cloned = clone(original);
+
+      const result = await cloned;
+      expect(result).toEqual({
+        items: [1, 2, 3],
+        user: { id: 1, name: "John" },
+      });
+    });
+
+    it("should handle cloning of promises with circular references", async () => {
+      const obj: any = { name: "circular" };
+      obj.self = obj;
+      const original = Promise.resolve(obj);
+      const cloned = clone(original);
+
+      const result = await cloned;
+      expect(result).not.toBe(obj);
+      expect(result.name).toBe("circular");
+      expect(result.self).toBe(result);
+    });
+
+    it("should clone a pending promise", async () => {
+      let resolver: (value: string) => void;
+      const original = new Promise<string>((resolve) => {
+        resolver = resolve;
+      });
+
+      const cloned = clone(original);
+      expect(cloned).not.toBe(original);
+
+      resolver!("resolved value");
+
+      const result = await cloned;
+      expect(result).toBe("resolved value");
+    });
+
+    it("should clone promise chains", async () => {
+      const original = Promise.resolve(1)
+        .then((x) => x + 1)
+        .then((x) => x * 2);
+
+      const cloned = clone(original);
+
+      expect(cloned).not.toBe(original);
+
+      const result = await cloned;
+      expect(result).toBe(4);
+    });
+
+    it("should handle promises with different states", async () => {
+      const pending = new Promise(() => {});
+      const resolved = Promise.resolve("resolved");
+      const rejected = Promise.reject(new Error("rejected"));
+
+      const clonedPending = clone(pending);
+      const clonedResolved = clone(resolved);
+      const clonedRejected = clone(rejected);
+
+      rejected.catch(() => {});
+      clonedRejected.catch(() => {});
+
+      expect(clonedPending).not.toBe(pending);
+      expect(clonedResolved).not.toBe(resolved);
+      expect(clonedRejected).not.toBe(rejected);
+
+      // Pending promise should still be pending
+      const resultPending = await Promise.race([
+        clonedPending,
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Still pending")), 100)
+        ),
+      ]).catch((e) => e);
+
+      expect(resultPending).toBeInstanceOf(Error);
+      expect((resultPending as Error).message).toBe("Still pending");
+
+      // Resolved promise
+      const resultResolved = await clonedResolved;
+      expect(resultResolved).toBe("resolved");
+
+      // Rejected promise - using helper function to avoid unhandled rejection
+      await testPromiseRejection(() => clonedRejected, "rejected");
+    });
+
+    it("should clone promise with non-primitive values", async () => {
+      const original = Promise.resolve({
+        boolean: true,
+        date: new Date("2023-01-01"),
+        func: () => "test",
+        number: 123,
+        regex: /test/g,
+      });
+      const cloned = clone(original);
+
+      const result = await cloned;
+      expect(result).toEqual({
+        boolean: true,
+        date: new Date("2023-01-01"),
+        func: expect.any(Function),
+        number: 123,
+        regex: /test/g,
+      });
+      expect(result).not.toBe(original);
+    });
+
+    it("should handle cloning of promise properties", async () => {
+      const original = Promise.resolve("value");
+      (original as any).customProp = "customValue";
+
+      const cloned = clone(original);
+
+      expect((cloned as any).customProp).toBe("customValue");
+
+      const result = await cloned;
+      expect(result).toBe("value");
+    });
+
+    it("should handle cloning of thenables", async () => {
+      const thenable = {
+        then(onFulfill: (value: string) => void) {
+          onFulfill("thenable value");
+        },
+      };
+
+      const cloned = clone(thenable);
+      expect(cloned).not.toBe(thenable);
+      expect(typeof cloned.then).toBe("function");
+
+      const result = await cloned;
+      expect(result).toBe("thenable value");
+    });
+  });
+});
+
+describe("Promise rejection testing helper", () => {
+  it("should demonstrate testPromiseRejection helper usage", async () => {
+    const rejectionError = new Error("test rejection");
+    const rejectedPromise = () => Promise.reject(rejectionError);
+
+    await testPromiseRejection(rejectedPromise, "test rejection");
+    const caughtError = await testPromiseRejection(rejectedPromise);
+
+    expect(caughtError).toBeInstanceOf(Error);
+    expect(caughtError.message).toBe("test rejection");
+  });
+
+  it("should work with functions that return rejected promises", async () => {
+    const createRejectedPromise = () =>
+      Promise.reject(new Error("function rejection"));
+
+    await testPromiseRejection(createRejectedPromise, "function rejection");
+    expect(createRejectedPromise).toBeDefined();
   });
 });
