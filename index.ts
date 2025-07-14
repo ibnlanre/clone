@@ -1,12 +1,14 @@
-export type CloneFunction = <T>(value: T, visited?: WeakMap<object, any>) => T;
-export type CloneHandler<T = any> = (
-  value: T,
+export type CloneFunction = <Value = any>(
+  value: Value,
+  visited?: WeakMap<object, any>
+) => Value;
+export type CloneHandler<Value = any, Result = Value> = (
+  value: Value,
   visited: WeakMap<object, any>,
   clone: CloneFunction
-) => T;
+) => Result;
 export type CloneRegistryModifier = (registry: CloneRegistry) => void;
 export type Constructor<T = any> = new (...args: any[]) => T;
-export type Subject<T = any> = Record<PropertyKey, T>;
 
 /**
  * Clone handler registry
@@ -16,10 +18,17 @@ export type Subject<T = any> = Record<PropertyKey, T>;
  * allowing the clone function to deeply copy objects while maintaining their structure and properties.
  */
 export class CloneRegistry {
-  private handlers = new Map<any, CloneHandler>();
+  private handlers: WeakMap<any, CloneHandler> = new WeakMap();
 
   /**
-   * Get handler for a value
+   * Get a clone handler for a specific value
+   *
+   * @description
+   * This method retrieves the appropriate clone handler for the given value based on its constructor.
+   * If no handler is found, it returns null.
+   *
+   * @param value The value for which to get the handler
+   * @returns The clone handler for the value or null if not found
    */
   getHandler(value: any): CloneHandler | null {
     const constructor = value?.constructor;
@@ -28,6 +37,13 @@ export class CloneRegistry {
 
   /**
    * Check if a constructor is registered
+   *
+   * @description
+   * This method checks if a handler is registered for the given constructor.
+   * It returns true if a handler exists, false otherwise.
+   *
+   * @param constructor The constructor to check for a registered handler
+   * @returns True if a handler is registered, false otherwise
    */
   hasHandler(constructor: any): boolean {
     return this.handlers.has(constructor);
@@ -35,6 +51,14 @@ export class CloneRegistry {
 
   /**
    * Register a handler for a specific constructor
+   *
+   * @description
+   * This method registers a clone handler for the specified constructor.
+   * It allows the clone function to use the handler when cloning instances of that constructor.
+   *
+   * @param constructor The constructor for which to register the handler
+   * @param handler The clone handler to register
+   * @returns The CloneRegistry instance for method chaining
    */
   setHandler<T>(
     constructor: Constructor<T> | Function,
@@ -55,6 +79,15 @@ export class CloneRegistry {
  * to create deep copies of complex objects while preserving their structure and properties.
  */
 export const Handlers = {
+  /**
+   * Clones an array by iterating over its items and cloning each one.
+   * It uses a WeakMap to track visited objects to handle circular references.
+   *
+   * @param value The array to clone
+   * @param visited A WeakMap to track visited objects
+   * @param clone The clone function to handle cloning of values
+   * @returns A new array containing cloned items
+   */
   Array: <T>(
     value: T[],
     visited: WeakMap<object, any>,
@@ -72,27 +105,53 @@ export const Handlers = {
 
     return result;
   },
+
+  /**
+   * Clones an ArrayBuffer by creating a new instance with the same byte data.
+   *
+   * @param value The ArrayBuffer to clone
+   * @returns A new ArrayBuffer with the same data
+   */
   ArrayBuffer: (value: ArrayBuffer) => value.slice(),
-  AsyncFunction: (
-    value: Function,
-    visited: WeakMap<object, any>,
-    clone: CloneFunction
-  ) => {
+
+  /**
+   * Clones an async function by creating a new instance that behaves like a constructor.
+   * It copies properties from the original function to the new instance.
+   *
+   * @param value The async function to clone
+   * @param visited A WeakMap to track visited objects
+   * @param clone The clone function to handle cloning of values
+   * @returns A new async function that behaves like a constructor
+   */
+  AsyncFunction: (value: Function) => {
     const result = createAsyncInstance(value as any);
-    return cloneFunctionProperties(value, result, visited, clone);
+    return result;
   },
-  AsyncGeneratorFunction: (
-    value: Function,
-    visited: WeakMap<object, any>,
-    clone: CloneFunction
-  ) => {
+
+  /**
+   * Clones an async generator function by creating a new instance that behaves like an async generator.
+   * It copies properties from the original function to the new instance.
+   *
+   * @param value The async generator function to clone
+   * @param visited A WeakMap to track visited objects
+   * @param clone The clone function to handle cloning of values
+   * @returns A new async generator function that behaves like a constructor
+   */
+  AsyncGeneratorFunction: (value: Function) => {
     const result = createAsyncGeneratorInstance(
       value as AsyncGeneratorFunction
     );
-    return cloneFunctionProperties(value, result, visited, clone);
+    return result;
   },
 
   Blob: (value: Blob) => new Blob([value], { type: value.type }),
+
+  /**
+   * Clones a DataView by creating a new instance with the same buffer, byteOffset, and byteLength.
+   *
+   * @param value The DataView to clone
+   * @returns A new DataView with the same data
+   */
   DataView: (value: DataView) => {
     return new DataView(
       value.buffer.slice(),
@@ -100,20 +159,39 @@ export const Handlers = {
       value.byteLength
     );
   },
+
+  /**
+   * Clones a Date by creating a new instance with the same time value.
+   *
+   * @param value The Date to clone
+   * @returns A new Date with the same time value
+   */
   Date: (value: Date) => new Date(value.getTime()),
-  Error: (
-    value: Error,
-    visited: WeakMap<object, any>,
-    clone: CloneFunction
-  ) => {
+
+  /**
+   * Clones an Error by creating a new instance with the same message and name.
+   * It also copies properties from the original error to the new instance.
+   *
+   * @param value The Error to clone
+   * @param visited A WeakMap to track visited objects
+   * @param clone The clone function to handle cloning of values
+   * @returns A new Error with the same message and properties
+   */
+  Error: (value: Error) => {
     const Constructor = value.constructor as ErrorConstructor;
     const result = new Constructor(value.message);
     result.name = value.name;
 
     if (value.stack) result.stack = value.stack;
-    copyProperties(result, value, visited, clone);
     return result;
   },
+
+  /**
+   * Clones a File by creating a new instance with the same name, lastModified, and type.
+   *
+   * @param value The File to clone
+   * @returns A new File with the same properties
+   */
   File: (value: File) => {
     const result = new File([value], value.name, {
       lastModified: value.lastModified,
@@ -121,30 +199,67 @@ export const Handlers = {
     });
     return result;
   },
+
+  /**
+   * Clones a FormData by creating a new instance and appending all key-value pairs.
+   *
+   * @param value The FormData to clone
+   * @returns A new FormData with the same key-value pairs
+   */
   FormData: (value: FormData) => {
     const result = new FormData();
-    for (const [key, val] of value) {
-      result.append(key, val);
-    }
+
+    value.forEach((item, key) => {
+      result.append(key, item);
+    });
+
     return result;
   },
-  Function: (
-    value: Function,
-    visited: WeakMap<object, any>,
-    clone: CloneFunction
-  ) => {
-    const result = createInstance(value);
-    return cloneFunctionProperties(value, result, visited, clone);
+
+  /**
+   * Clones a function by creating a new instance that behaves like a constructor.
+   * It copies properties from the original function to the new instance.
+   *
+   * @param value The function to clone
+   * @param visited A WeakMap to track visited objects
+   * @param clone The clone function to handle cloning of values
+   * @returns A new function that behaves like a constructor
+   */
+  Function: (value: Function) => {
+    return createInstance(value);
   },
-  GeneratorFunction: (
-    value: Function,
-    visited: WeakMap<object, any>,
-    clone: CloneFunction
-  ) => {
-    const result = createGeneratorInstance(value as GeneratorFunction);
-    return cloneFunctionProperties(value, result, visited, clone);
+
+  /**
+   * Clones a generator function by creating a new instance that behaves like a generator.
+   * It copies properties from the original function to the new instance.
+   *
+   * @param value The generator function to clone
+   * @param visited A WeakMap to track visited objects
+   * @param clone The clone function to handle cloning of values
+   * @returns A new generator function that behaves like a constructor
+   */
+  GeneratorFunction: (value: Function) => {
+    return createGeneratorInstance(value as GeneratorFunction);
   },
+
+  /**
+   * Identity handler that returns the value as is.
+   * Used for types that do not require deep cloning, such as WeakMap, WeakSet, and WeakRef.
+   *
+   * @param value The value to return
+   * @returns The same value
+   */
   Identity: <T>(value: T) => value,
+
+  /**
+   * Clones a Map by iterating over its items and cloning each key-value pair.
+   * It uses a WeakMap to track visited objects to handle circular references.
+   *
+   * @param value The Map to clone
+   * @param visited A WeakMap to track visited objects
+   * @param clone The clone function to handle cloning of values
+   * @returns A new Map containing cloned items
+   */
   Map: <K, V>(
     value: Map<K, V>,
     visited: WeakMap<object, any>,
@@ -159,11 +274,29 @@ export const Handlers = {
 
     return result;
   },
-  Object: (value: any, visited: WeakMap<object, any>, clone: CloneFunction) => {
-    const result = Object.create(Object.getPrototypeOf(value));
-    copyProperties(result, value, visited, clone);
-    return result;
+
+  /**
+   * Clones an object by creating a new instance and copying properties from the original object.
+   * It uses a WeakMap to track visited objects to handle circular references.
+   *
+   * @param value The object to clone
+   * @param visited A WeakMap to track visited objects
+   * @param clone The clone function to handle cloning of values
+   * @returns A new object with the same properties
+   */
+  Object: (value: any) => {
+    return Object.create(Object.getPrototypeOf(value));
   },
+
+  /**
+   * Clones a Promise by creating a new Promise that resolves with the cloned value.
+   * It uses a WeakMap to track visited objects to handle circular references.
+   *
+   * @param value The Promise to clone
+   * @param visited A WeakMap to track visited objects
+   * @param clone The clone function to handle cloning of values
+   * @returns A new Promise that resolves with the cloned value
+   */
   Promise: (
     value: Promise<any>,
     visited: WeakMap<object, any>,
@@ -176,10 +309,26 @@ export const Handlers = {
       );
     });
 
-    copyProperties(result, value, visited, clone);
     return result;
   },
+
+  /**
+   * Clones a RegExp by creating a new instance with the same source and flags.
+   *
+   * @param value The RegExp to clone
+   * @returns A new RegExp with the same source and flags
+   */
   RegExp: (value: RegExp) => new RegExp(value.source, value.flags),
+
+  /**
+   * Clones a Set by iterating over its items and cloning each one.
+   * It uses a WeakMap to track visited objects to handle circular references.
+   *
+   * @param value The Set to clone
+   * @param visited A WeakMap to track visited objects
+   * @param clone The clone function to handle cloning of values
+   * @returns A new Set containing cloned items
+   */
   Set: <T>(
     value: Set<T>,
     visited: WeakMap<object, any>,
@@ -194,6 +343,13 @@ export const Handlers = {
 
     return result;
   },
+
+  /**
+   * Clones a TypedArray by creating a new instance with the same buffer, byteOffset, and length.
+   *
+   * @param value The TypedArray to clone
+   * @returns A new TypedArray with the same data
+   */
   TypedArray: (value: any) => {
     return new value.constructor(
       value.buffer.slice(),
@@ -201,7 +357,21 @@ export const Handlers = {
       value.length
     );
   },
+
+  /**
+   * Clones a URL by creating a new instance with the same href.
+   *
+   * @param value The URL to clone
+   * @returns A new URL with the same href
+   */
   URL: (value: URL) => new URL(value.href),
+
+  /**
+   * Clones a URLSearchParams by creating a new instance with the same query parameters.
+   *
+   * @param value The URLSearchParams to clone
+   * @returns A new URLSearchParams with the same query parameters
+   */
   URLSearchParams: (value: URLSearchParams) => {
     return new URLSearchParams(value);
   },
@@ -248,75 +418,23 @@ export function createCloneFunction(
     value: T,
     visited?: WeakMap<object, any>
   ): T => {
-    // Handle primitive values directly
     if (isPrimitive(value)) return value;
 
-    // Initialize visited map
     if (!visited) visited = new WeakMap();
 
-    // Check circular references
     if (visited.has(value as object)) {
       return visited.get(value as object);
     }
 
-    // Try to find a registered handler
     const handler = registry.getHandler(value);
-    if (handler) return handler(value, visited, clone);
+    const result = handler
+      ? handler(value, visited, clone)
+      : Handlers.Object(value);
 
-    // Fallback to generic object handler
-    return Handlers.Object(value, visited, clone);
+    return copyProperties(result, value, visited, clone);
   };
 
   return clone;
-}
-
-/**
- * Copy properties from one object to another
- *
- * @description
- * This function copies properties from the source object to the target object.
- * It handles both regular properties and symbols, and uses the provided clone function
- * to handle circular references.
- *
- * @param result The target object where properties will be copied
- * @param value The source object from which properties will be copied
- * @param visited A WeakMap to track visited objects for circular references
- * @param clone The clone function to handle cloning of values
- *
- * @returns The target object with copied properties
- */
-function copyProperties(
-  result: Subject,
-  value: Subject,
-  visited: WeakMap<object, any>,
-  clone: CloneFunction
-) {
-  visited.set(value, result);
-
-  function enumerate<Keys extends PropertyKey[]>(keys: Keys) {
-    if (!keys.length) return;
-
-    for (let index = 0; index < keys.length; index++) {
-      const key = keys[index];
-
-      if (key === "prototype") continue;
-      const descriptor = Object.getOwnPropertyDescriptor(value, key);
-
-      if (descriptor) {
-        if (isPropertyAccessor(descriptor, key)) {
-          Object.defineProperty(result, key, descriptor);
-        } else {
-          result[key] = clone(value[key], visited);
-        }
-      }
-    }
-  }
-
-  const symbols = Object.getOwnPropertySymbols(value);
-  const properties = Object.getOwnPropertyNames(value);
-
-  enumerate(properties);
-  enumerate(symbols);
 }
 
 /**
@@ -469,6 +587,81 @@ function createInstance<T extends Function>(value: T) {
 }
 
 /**
+ * Check if a type is not an object or function
+ *
+ * @description
+ * This function checks if the provided type is neither an object nor a function.
+ * It returns true for primitive types (null, undefined, string, number, boolean, symbol, bigint)
+ * and false for objects and functions.
+ *
+ * @param type The type to check
+ * @returns True if the type is not an object or function, false otherwise
+ */
+function isNonObject<T>(type: T) {
+  return type !== "object" && type !== "function";
+}
+
+/**
+ * Check if a value is a primitive type
+ *
+ * @description
+ * This function checks if the provided value is a primitive type (null, undefined, string, number, boolean, symbol, or bigint).
+ * It returns true for these types and false for objects and functions.
+ *
+ * @param value The value to check
+ * @returns True if the value is a primitive type, false otherwise
+ */
+function isPrimitive<T>(value: T) {
+  if (value === null || value === undefined) return true;
+  return isNonObject(typeof value);
+}
+
+/**
+ * Check if a property descriptor indicates a property accessor
+ *
+ * @description
+ * This function checks if the provided property descriptor indicates that the property is an accessor (getter/setter)
+ * or has specific characteristics that make it non-enumerable, non-configurable, or non-writable.
+ *
+ * @param descriptor The property descriptor to check
+ * @param key The property key being checked
+ *
+ * @returns True if the descriptor indicates a property accessor, false otherwise
+ */
+function isPropertyAccessor(descriptor: PropertyDescriptor) {
+  return (
+    descriptor.get ||
+    descriptor.set ||
+    !descriptor.enumerable ||
+    !descriptor.configurable ||
+    !descriptor.writable
+  );
+}
+
+/**
+ * Get all function constructor types
+ *
+ * @description
+ * This function dynamically retrieves constructors for different function types
+ * including AsyncFunction, GeneratorFunction, and AsyncGeneratorFunction.
+ * These constructors are not globally available, so we get them from instances.
+ *
+ * @returns Array of function constructors
+ */
+function registerFunctionConstructors(registry: CloneRegistry) {
+  registry.setHandler(Function, Handlers.Function);
+
+  const AsyncFunction = async function () {}.constructor;
+  registry.setHandler(AsyncFunction, Handlers.AsyncFunction);
+
+  const GeneratorFunction = function* () {}.constructor;
+  registry.setHandler(GeneratorFunction, Handlers.GeneratorFunction);
+
+  const AsyncGeneratorFunction = async function* () {}.constructor;
+  registry.setHandler(AsyncGeneratorFunction, Handlers.AsyncGeneratorFunction);
+}
+
+/**
  * Register handlers for typed array constructors
  *
  * @description
@@ -515,113 +708,6 @@ function registerWeakCollections(registry: CloneRegistry) {
 }
 
 /**
- * Clone properties of a function, including its prototype
- *
- * @description
- * This function copies properties from the original function to the new function,
- * including the prototype if it exists. It also sets the constructor property
- * on the prototype to point back to the new function.
- *
- * @param value The original function to clone
- * @param result The new function instance that will receive the properties
- * @param visited A WeakMap to track visited objects for circular references
- * @param clone The clone function to handle cloning of values
- *
- * @returns The new function with cloned properties
- */
-const cloneFunctionProperties = (
-  value: Function,
-  result: Function,
-  visited: WeakMap<object, any>,
-  clone: CloneFunction
-) => {
-  Object.assign(result, value);
-
-  if (value.prototype) {
-    Object.assign(result.prototype, value.prototype);
-  }
-
-  copyProperties(result, value, visited, clone);
-  return result;
-};
-
-/**
- * Check if a type is not an object or function
- *
- * @description
- * This function checks if the provided type is neither an object nor a function.
- * It returns true for primitive types (null, undefined, string, number, boolean, symbol, bigint)
- * and false for objects and functions.
- *
- * @param type The type to check
- * @returns True if the type is not an object or function, false otherwise
- */
-function isNonObject<T>(type: T) {
-  return type !== "object" && type !== "function";
-}
-
-/**
- * Check if a value is a primitive type
- *
- * @description
- * This function checks if the provided value is a primitive type (null, undefined, string, number, boolean, symbol, or bigint).
- * It returns true for these types and false for objects and functions.
- *
- * @param value The value to check
- * @returns True if the value is a primitive type, false otherwise
- */
-function isPrimitive<T>(value: T) {
-  if (value === null || value === undefined) return true;
-  return isNonObject(typeof value);
-}
-
-/**
- * Check if a property descriptor indicates a property accessor
- *
- * @description
- * This function checks if the provided property descriptor indicates that the property is an accessor (getter/setter)
- * or has specific characteristics that make it non-enumerable, non-configurable, or non-writable.
- *
- * @param descriptor The property descriptor to check
- * @param key The property key being checked
- *
- * @returns True if the descriptor indicates a property accessor, false otherwise
- */
-function isPropertyAccessor(descriptor: PropertyDescriptor, key: PropertyKey) {
-  return (
-    descriptor.get ||
-    descriptor.set ||
-    !descriptor.enumerable ||
-    !descriptor.configurable ||
-    !descriptor.writable ||
-    key === "__proto__"
-  );
-}
-
-/**
- * Get all function constructor types
- *
- * @description
- * This function dynamically retrieves constructors for different function types
- * including AsyncFunction, GeneratorFunction, and AsyncGeneratorFunction.
- * These constructors are not globally available, so we get them from instances.
- *
- * @returns Array of function constructors
- */
-function registerFunctionConstructors(registry: CloneRegistry) {
-  registry.setHandler(Function, Handlers.Function);
-
-  const AsyncFunction = async function () {}.constructor;
-  registry.setHandler(AsyncFunction, Handlers.AsyncFunction);
-
-  const GeneratorFunction = function* () {}.constructor;
-  registry.setHandler(GeneratorFunction, Handlers.GeneratorFunction);
-
-  const AsyncGeneratorFunction = async function* () {}.constructor;
-  registry.setHandler(AsyncGeneratorFunction, Handlers.AsyncGeneratorFunction);
-}
-
-/**
  * Creates a deep clone of a value using the default registry.
  *
  * @param value The value to clone.
@@ -631,3 +717,65 @@ function registerFunctionConstructors(registry: CloneRegistry) {
  */
 const clone = createCloneFunction();
 export default clone;
+
+/**
+ * Copy properties from one object to another
+ *
+ * @description
+ * This function copies properties from the source object to the target object.
+ * It handles both regular properties and symbols, and uses the provided clone function
+ * to handle circular references.
+ *
+ * @param result The target object where properties will be copied
+ * @param value The source object from which properties will be copied
+ * @param visited A WeakMap to track visited objects for circular references
+ * @param clone The clone function to handle cloning of values
+ *
+ * @returns The target object with copied properties
+ */
+function copyProperties(
+  result: any,
+  value: any,
+  visited: WeakMap<object, any>,
+  clone: CloneFunction
+) {
+  visited.set(value, result);
+
+  if (!Object.isExtensible(result)) return result;
+
+  const properties = Object.getOwnPropertyNames(value);
+  if (properties.length) {
+    for (let index = 0; index < properties.length; index++) {
+      const key = properties[index];
+
+      if (key === "prototype" || key === "__proto__") {
+        Object.assign(result[key], value[key]);
+        continue;
+      }
+
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+
+      if (descriptor) {
+        if (isPropertyAccessor(descriptor)) {
+          try {
+            Object.defineProperty(result, key, descriptor);
+          } catch (error) {
+            console.log({ error, key, value });
+          }
+        } else {
+          result[key] = clone(value[key], visited);
+        }
+      }
+    }
+  }
+
+  const symbols = Object.getOwnPropertySymbols(value);
+  if (symbols.length) {
+    for (let index = 0; index < symbols.length; index++) {
+      const key = symbols[index];
+      result[key] = clone(value[key], visited);
+    }
+  }
+
+  return result;
+}
