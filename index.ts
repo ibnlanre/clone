@@ -84,11 +84,30 @@ export class CloneRegistry {
   }
 }
 
+/**
+ * Pre-built validators for common types
+ *
+ * @description
+ * This object contains methods that validate if a value is of a specific type.
+ * These validators are used by the clone function to ensure that values are of the expected type before cloning.
+ */
 export const Validators = {
+  /**
+   * Validates if the result is an array
+   *
+   * @param result The value to validate
+   * @returns True if the value is an array, false otherwise
+   */
   Array: (result: any): result is any[] => {
     return Array.isArray(result);
   },
 
+  /**
+   * Validates if the result is an ArrayBuffer
+   *
+   * @param result The value to validate
+   * @returns True if the value is an ArrayBuffer, false otherwise
+   */
   AsyncFunction: (result: any): result is Function => {
     return (
       typeof result === "function" &&
@@ -96,6 +115,12 @@ export const Validators = {
     );
   },
 
+  /**
+   * Validates if the result is an AsyncGeneratorFunction
+   *
+   * @param result The value to validate
+   * @returns True if the value is an AsyncGeneratorFunction, false otherwise
+   */
   AsyncGeneratorFunction: (result: any): result is Function => {
     return (
       typeof result === "function" &&
@@ -103,14 +128,32 @@ export const Validators = {
     );
   },
 
+  /**
+   * Validates if the result is a Date object
+   *
+   * @param result The value to validate
+   * @returns True if the value is a Date object, false otherwise
+   */
   Date: (result: any): result is Date => {
     return result instanceof Date && !isNaN(result.getTime());
   },
 
+  /**
+   * Validates if the result is a Function
+   *
+   * @param result The value to validate
+   * @returns True if the value is a Function, false otherwise
+   */
   Function: (result: any): result is Function => {
     return typeof result === "function";
   },
 
+  /**
+   * Validates if the result is a GeneratorFunction
+   *
+   * @param result The value to validate
+   * @returns True if the value is a GeneratorFunction, false otherwise
+   */
   GeneratorFunction: (result: any): result is Function => {
     return (
       typeof result === "function" &&
@@ -118,6 +161,12 @@ export const Validators = {
     );
   },
 
+  /**
+   * Validates if the result is an object
+   *
+   * @param result The value to validate
+   * @returns True if the value is an object, false otherwise
+   */
   Object: (result: any): result is object => {
     return result !== null && typeof result === "object";
   },
