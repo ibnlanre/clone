@@ -21,7 +21,7 @@
     "typecheck": "tsc --pretty --noEmit",
     "test:performance": "vitest run performance.test.ts",
     "test": "vitest run",
-    "lint": "eslint --fix"
+    "lint": "eslint . --fix"
   },
   "repository": {
     "type": "git",

@@ -232,11 +232,99 @@ Creates a deep clone of the provided value.
 - Maintains TypeScript type information
 - Returns the same type as the input
 
+### `createCloneFunction(registryModifier?: CloneRegistryModifier): CloneFunction`
+
+Creates a custom clone function with optional registry modifications.
+
+**Parameters:**
+
+- `registryModifier` - (Optional) Function to customize the clone registry
+
+**Returns:**
+
+- A customized clone function
+
+### `CloneRegistry`
+
+Manages clone handlers and validators for different types.
+
+**Methods:**
+
+- `setHandler<T>(constructor, handler, validator?)` - Register a handler and optional validator
+- `getHandler(value)` - Get handler and validator for a value
+- `hasHandler(constructor)` - Check if a handler exists
+
+### `Validators`
+
+Pre-built validators for common JavaScript types.
+
+**Available Validators:**
+
+- `Array`, `Object`, `Function`, `Date`
+- `AsyncFunction`, `GeneratorFunction`, `AsyncGeneratorFunction`
+
+### `Handlers`
+
+Pre-built clone handlers for common JavaScript types.
+
 ## Advanced Usage
 
 ### Creating Custom Clone Functions
 
 The library provides powerful customization capabilities through `createCloneFunction` and the registry system. This allows you to handle custom types or modify existing behavior.
+
+#### Type Validation System
+
+Validators provide an additional layer of type safety when cloning objects. They ensure that values are of the expected type before applying the corresponding clone handler.
+
+```javascript
+import { createCloneFunction, Validators } from "@ibnlanre/clone";
+
+// Create custom validators
+const customValidators = {
+  // Validate a specific custom class
+  MyClass: (value) => value instanceof MyClass && value.isValid,
+
+  // Validate objects with specific properties
+  ConfigObject: (value) => {
+    return (
+      typeof value === "object" &&
+      value !== null &&
+      "config" in value &&
+      "version" in value
+    );
+  },
+
+  // Validate arrays with specific structure
+  UserArray: (value) => {
+    return (
+      Array.isArray(value) &&
+      value.every((item) => item && typeof item.id === "string")
+    );
+  },
+};
+
+const clone = createCloneFunction((registry) => {
+  // Register handler with custom validator
+  registry.setHandler(
+    MyClass,
+    (value, visited, clone) => {
+      /* handler logic */
+    },
+    customValidators.MyClass
+  );
+
+  // Use built-in validators
+  registry.setHandler(MyFunction, Handlers.Function, Validators.Function);
+});
+```
+
+**Benefits of Using Validators:**
+
+- **Type Safety**: Ensure values match expected types before cloning
+- **Error Prevention**: Catch type mismatches early in the cloning process
+- **Debugging**: Better error messages when validation fails
+- **Performance**: Skip inappropriate handlers for better performance
 
 #### Basic Custom Function
 
@@ -253,7 +341,11 @@ const cloned = customClone(originalObject);
 #### Adding Custom Type Handlers
 
 ```javascript
-import { createCloneFunction, CloneRegistry } from "@ibnlanre/clone";
+import {
+  createCloneFunction,
+  CloneRegistry,
+  Validators,
+} from "@ibnlanre/clone";
 
 // Define a custom class
 class MyCustomType {
@@ -265,13 +357,20 @@ class MyCustomType {
 
 // Create a custom clone function with registry modifier
 const customClone = createCloneFunction((registry) => {
-  registry.setHandler(MyCustomType, (value, visited, clone) => {
-    // Custom cloning logic for MyCustomType
-    const result = new MyCustomType(clone(value.data, visited));
-    result.timestamp = value.timestamp; // Preserve original timestamp
-    visited.set(value, result);
-    return result;
-  });
+  registry.setHandler(
+    MyCustomType,
+    (value, visited, clone) => {
+      // Custom cloning logic for MyCustomType
+      const result = new MyCustomType(clone(value.data, visited));
+
+      result.timestamp = value.timestamp; // Preserve original timestamp
+      visited.set(value, result);
+
+      return result;
+    },
+    // Optional validator to ensure type safety
+    (value) => value instanceof MyCustomType
+  );
 });
 
 // Now MyCustomType instances are cloned with custom logic
@@ -284,7 +383,7 @@ const cloned = customClone(original);
 The `CloneRegistry` class provides methods to manage type handlers:
 
 ```javascript
-import { CloneRegistry, Handlers } from "@ibnlanre/clone";
+import { CloneRegistry, Handlers, Validators } from "@ibnlanre/clone";
 
 const registry = new CloneRegistry();
 
@@ -293,19 +392,32 @@ if (registry.hasHandler(MyCustomType)) {
   console.log("Handler exists");
 }
 
-// Set a custom handler
-registry.setHandler(MyCustomType, Handlers.Identity); // Use identity handler
+// Set a custom handler with validator
+registry.setHandler(
+  MyCustomType,
+  Handlers.Identity, // Use identity handler
+  Validators.Object // Use built-in object validator
+);
+
+// Set a custom handler with custom validator
+registry.setHandler(
+  MySpecialType,
+  (value, visited, clone) => {
+    /* custom logic */
+  },
+  (value) => value instanceof MySpecialType && value.isValid
+);
 
 // Get a handler for a value
-const handler = registry.getHandler(someValue);
+const [handler, validator] = registry.getHandler(someValue);
 ```
 
-#### Built-in Handlers
+#### Built-in Handlers and Validators
 
-The library exports pre-built handlers you can reuse:
+The library exports pre-built handlers and validators you can reuse:
 
 ```javascript
-import { createCloneFunction, Handlers } from "@ibnlanre/clone";
+import { createCloneFunction, Handlers, Validators } from "@ibnlanre/clone";
 
 const customClone = createCloneFunction((registry) => {
   // Use identity handler for custom types (no cloning)
@@ -314,15 +426,28 @@ const customClone = createCloneFunction((registry) => {
   // Use object handler for plain object-like types
   registry.setHandler(MyPlainObjectType, Handlers.Object);
 
-  // Use array handler for array-like types
-  registry.setHandler(MyArrayLikeType, Handlers.Array);
+  // Use array handler for array-like types with array validator
+  registry.setHandler(MyArrayLikeType, Handlers.Array, Validators.Array);
+
+  // Use function handler with function validator
+  registry.setHandler(MyCallableType, Handlers.Function, Validators.Function);
 });
 ```
+
+**Available Built-in Validators:**
+
+- `Validators.Array` - Validates arrays
+- `Validators.Object` - Validates objects
+- `Validators.Function` - Validates functions
+- `Validators.Date` - Validates Date objects
+- `Validators.AsyncFunction` - Validates async functions
+- `Validators.GeneratorFunction` - Validates generator functions
+- `Validators.AsyncGeneratorFunction` - Validates async generator functions
 
 #### Complex Custom Handler Example
 
 ```javascript
-import { createCloneFunction } from "@ibnlanre/clone";
+import { createCloneFunction, Validators } from "@ibnlanre/clone";
 
 class DatabaseModel {
   constructor(id, data) {
@@ -333,18 +458,28 @@ class DatabaseModel {
 }
 
 const dbClone = createCloneFunction((registry) => {
-  registry.setHandler(DatabaseModel, (value, visited, clone) => {
-    // Create new instance with cloned data but preserve ID
-    const result = new DatabaseModel(
-      value.id, // Keep original ID
-      clone(value.data, visited) // Deep clone data
-    );
+  registry.setHandler(
+    DatabaseModel,
+    (value, visited, clone) => {
+      // Create new instance with cloned data but preserve ID
+      const result = new DatabaseModel(
+        value.id, // Keep original ID
+        clone(value.data, visited) // Deep clone data
+      );
 
-    // Clone metadata separately
-    result._metadata = clone(value._metadata, visited);
-    visited.set(value, result);
-    return result;
-  });
+      // Clone metadata separately
+      result._metadata = clone(value._metadata, visited);
+      visited.set(value, result);
+
+      return result;
+    },
+    // Custom validator that checks instance and data validity
+    (value) => {
+      return (
+        value instanceof DatabaseModel && value.id != null && value.data != null
+      );
+    }
+  );
 });
 
 // Usage
@@ -370,7 +505,19 @@ type CloneHandler<T> = (
 ) => T;
 ```
 
-**Important**: Always call `visited.set(value, result)` before recursively cloning properties to prevent infinite loops with circular references.
+Custom validators receive one parameter and return a boolean:
+
+```typescript
+type CloneValidator = (
+  value: any // The value to validate
+) => boolean;
+```
+
+**Important**:
+
+- Always call `visited.set(value, result)` before recursively cloning properties to prevent infinite loops with circular references.
+- Validators are optional but recommended for type safety and better error handling.
+- If no validator is provided, the handler will be used for any value of that constructor type.
 
 #### Extending Existing Types
 
@@ -379,24 +526,32 @@ You can override handlers for built-in types:
 ```javascript
 const customClone = createCloneFunction((registry) => {
   // Custom Date handler that rounds to nearest second
-  registry.setHandler(Date, (value) => {
-    const rounded = new Date(Math.round(value.getTime() / 1000) * 1000);
-    return rounded;
-  });
+  registry.setHandler(
+    Date,
+    (value) => {
+      const rounded = new Date(Math.round(value.getTime() / 1000) * 1000);
+      return rounded;
+    },
+    Validators.Date // Use built-in Date validator
+  );
 
   // Custom Array handler that filters out null values
-  registry.setHandler(Array, (value, visited, clone) => {
-    const result = [];
-    visited.set(value, result);
+  registry.setHandler(
+    Array,
+    (value, visited, clone) => {
+      const result = [];
+      visited.set(value, result);
 
-    for (let i = 0; i < value.length; i++) {
-      if (i in value && value[i] !== null) {
-        result[i] = clone(value[i], visited);
+      for (let i = 0; i < value.length; i++) {
+        if (i in value && value[i] !== null) {
+          result[i] = clone(value[i], visited);
+        }
       }
-    }
 
-    return result;
-  });
+      return result;
+    },
+    Validators.Array // Use built-in Array validator
+  );
 });
 ```
 

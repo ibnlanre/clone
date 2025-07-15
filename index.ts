@@ -542,11 +542,12 @@ export function createCloneFunction(
  *
  * @description
  * This function creates a new async generator instance that can be used as an async generator function.
- * It checks if the function is called with `new` and applies the original function to the new instance,
- * yielding values from the async generator or returning the instance if it's not an async generator.
+ * The original function is called directly to preserve its lexical scope and closure variables.
+ * The function maintains proper constructor behavior while ensuring all closure variables
+ * captured in the original function remain accessible.
  *
  * @param value The async generator function to create an instance of
- * @returns A new async generator function that behaves like a constructor
+ * @returns A new async generator function that behaves like a constructor with preserved closures
  */
 function createAsyncGeneratorInstance<T extends AsyncGeneratorFunction>(
   value: T
@@ -554,6 +555,8 @@ function createAsyncGeneratorInstance<T extends AsyncGeneratorFunction>(
   const result = async function* (this: any, ...args: any[]) {
     if (new.target) {
       const instance = Object.create(result.prototype);
+
+      // Call the original function directly to preserve its closure
       const generator = value.apply(instance, args);
 
       if (generator && typeof generator.next === "function") {
@@ -562,6 +565,7 @@ function createAsyncGeneratorInstance<T extends AsyncGeneratorFunction>(
         return isNonObject(generator) ? instance : generator;
       }
     } else {
+      // Call the original function directly to preserve its closure
       yield* value.apply(this, args);
     }
   };
@@ -574,11 +578,12 @@ function createAsyncGeneratorInstance<T extends AsyncGeneratorFunction>(
  *
  * @description
  * This function creates a new async instance of a function that behaves like a constructor.
- * It checks if the function is called with `new` and applies the original function
- * to the new instance, returning either the instance or the result of the function.
+ * The original function is called directly to preserve its lexical scope and closure variables.
+ * The function maintains proper constructor behavior while ensuring all closure variables
+ * captured in the original function remain accessible.
  *
  * @param value The async function to create an instance of
- * @returns A new async function that behaves like a constructor
+ * @returns A new async function that behaves like a constructor with preserved closures
  */
 function createAsyncInstance<T extends (...args: any[]) => Promise<any>>(
   value: T
@@ -586,9 +591,13 @@ function createAsyncInstance<T extends (...args: any[]) => Promise<any>>(
   const result = async function (this: any, ...args: any[]) {
     if (new.target) {
       const instance = Object.create(result.prototype);
+
+      // Call the original function directly to preserve its closure
       const method = await value.apply(instance, args);
+
       return isNonObject(method) ? instance : method;
     }
+    // Call the original function directly to preserve its closure
     return await value.apply(this, args);
   };
 
@@ -635,16 +644,19 @@ function createDefaultRegistry(registry: CloneRegistry) {
  *
  * @description
  * This function creates a new generator instance that can be used as a generator function.
- * It checks if the function is called with `new` and applies the original function to the new instance,
- * yielding values from the generator or returning the instance if it's not a generator.
+ * The original function is called directly to preserve its lexical scope and closure variables.
+ * The function maintains proper constructor behavior while ensuring all closure variables
+ * captured in the original function remain accessible.
  *
  * @param value The generator function to create an instance of
- * @returns A new generator function that behaves like a constructor
+ * @returns A new generator function that behaves like a constructor with preserved closures
  */
 function createGeneratorInstance<T extends GeneratorFunction>(value: T) {
   const result = function* (this: any, ...args: any[]) {
     if (new.target) {
       const instance = Object.create(result.prototype);
+
+      // Call the original function directly to preserve its closure
       const generator = value.apply(instance, args);
 
       if (generator && typeof generator.next === "function") {
@@ -653,6 +665,7 @@ function createGeneratorInstance<T extends GeneratorFunction>(value: T) {
         return isNonObject(generator) ? instance : generator;
       }
     } else {
+      // Call the original function directly to preserve its closure
       yield* value.apply(this, args);
     }
   };
@@ -665,19 +678,25 @@ function createGeneratorInstance<T extends GeneratorFunction>(value: T) {
  *
  * @description
  * This function creates a new instance of a function that behaves like a constructor.
- * It checks if the function is called with `new` and applies the original function
- * to the new instance, returning either the instance or the result of the function.
+ * The original function is called directly to preserve its lexical scope and closure variables.
+ * The function maintains proper constructor behavior while ensuring all closure variables
+ * captured in the original function remain accessible.
  *
  * @param value The function to create an instance of
- * @returns A new function that behaves like a constructor
+ * @returns A new function that behaves like a constructor with preserved closures
  */
 function createInstance<T extends Function>(value: T) {
   const result = function (this: any, ...args: any[]) {
     if (new.target) {
       const instance = Object.create(result.prototype);
+
+      // Call the original function directly to preserve its closure
       const method = value.apply(instance, args);
+
       return isNonObject(method) ? instance : method;
     }
+
+    // Call the original function directly to preserve its closure
     return value.apply(this, args);
   };
 

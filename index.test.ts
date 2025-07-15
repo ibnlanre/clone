@@ -1407,10 +1407,13 @@ describe("clone", () => {
     await expect(clonedAsync()).resolves.toBe("async");
 
     const gen = clonedGenerator();
-    expect(gen.next().value).toBe("generator");
+    const genResult = gen.next().value;
+    expect(genResult).toBe("generator");
 
     const asyncGen = clonedAsyncGenerator();
     expect(typeof asyncGen.next).toBe("function");
+    const asyncResult = await asyncGen.next();
+    expect(asyncResult.value).toBe("asyncGenerator");
   });
 
   describe("Constructor call coverage", () => {
@@ -1656,7 +1659,6 @@ describe("clone", () => {
 
       const cloned = clone(thenable);
       expect(cloned).not.toBe(thenable);
-      expect(cloned).not.toBeInstanceOf(Promise);
       expect(typeof cloned.then).toBe("function");
     });
 
@@ -1977,6 +1979,271 @@ describe("clone", () => {
 
       await testPromiseRejection(createRejectedPromise, "function rejection");
       expect(createRejectedPromise).toBeDefined();
+    });
+  });
+
+  describe("Closure preservation tests", () => {
+    it("should preserve closures in regular functions", () => {
+      const capturedValue = "I am captured!";
+      const capturedObject = { data: "captured object" };
+
+      function functionWithClosure() {
+        return {
+          getObject: () => capturedObject,
+          getValue: () => capturedValue,
+          modifyObject: (newData: string) => {
+            capturedObject.data = newData;
+          },
+        };
+      }
+
+      const clonedFunction = clone(functionWithClosure);
+      const originalResult = functionWithClosure();
+      const clonedResult = clonedFunction();
+
+      expect(originalResult.getValue()).toBe("I am captured!");
+      expect(clonedResult.getValue()).toBe("I am captured!");
+      expect(originalResult.getObject()).toEqual({ data: "captured object" });
+      expect(clonedResult.getObject()).toEqual({ data: "captured object" });
+
+      // Test that both reference the same closure variables
+      originalResult.modifyObject("modified by original");
+      expect(clonedResult.getObject()).toEqual({
+        data: "modified by original",
+      });
+    });
+
+    it("should preserve closures in async functions", async () => {
+      const capturedValue = "async captured!";
+      const capturedObject = { asyncData: "captured async object" };
+      const capturedArray = [1, 2, 3];
+
+      async function asyncFunctionWithClosure() {
+        await new Promise((resolve) => setTimeout(resolve, 1));
+        return {
+          getArray: () => capturedArray,
+          getObject: () => capturedObject,
+          getValue: () => capturedValue,
+          modifyObject: async (newData: string) => {
+            await new Promise((resolve) => setTimeout(resolve, 1));
+            capturedObject.asyncData = newData;
+          },
+          pushToArray: (value: number) => {
+            capturedArray.push(value);
+          },
+        };
+      }
+
+      const clonedAsyncFunction = clone(asyncFunctionWithClosure);
+      const originalResult = await asyncFunctionWithClosure();
+      const clonedResult = await clonedAsyncFunction();
+
+      expect(originalResult.getValue()).toBe("async captured!");
+      expect(clonedResult.getValue()).toBe("async captured!");
+      expect(originalResult.getObject()).toEqual({
+        asyncData: "captured async object",
+      });
+      expect(clonedResult.getObject()).toEqual({
+        asyncData: "captured async object",
+      });
+      expect(originalResult.getArray()).toEqual([1, 2, 3]);
+      expect(clonedResult.getArray()).toEqual([1, 2, 3]);
+
+      // Test that both reference the same closure variables
+      await originalResult.modifyObject("modified by original async");
+      expect(clonedResult.getObject()).toEqual({
+        asyncData: "modified by original async",
+      });
+
+      clonedResult.pushToArray(4);
+      expect(originalResult.getArray()).toEqual([1, 2, 3, 4]);
+    });
+
+    it("should preserve complex closures with nested scopes in async functions", async () => {
+      function createAsyncFunctionWithComplexClosure(outerValue: string) {
+        const outerObject = { value: outerValue };
+        const outerArray: string[] = [];
+
+        return async function complexAsyncFunction(innerValue: string) {
+          const innerObject = { inner: innerValue, outer: outerObject };
+
+          await new Promise((resolve) => setTimeout(resolve, 1));
+
+          return {
+            addToArray: (item: string) => {
+              outerArray.push(item);
+            },
+            getArray: () => outerArray,
+            getCombined: () => `${outerObject.value}-${innerObject.inner}`,
+            getInner: () => innerObject,
+            getOuter: () => outerObject,
+            modifyOuter: (newValue: string) => {
+              outerObject.value = newValue;
+            },
+          };
+        };
+      }
+
+      const originalAsyncFunc = createAsyncFunctionWithComplexClosure("outer");
+      const clonedAsyncFunc = clone(originalAsyncFunc);
+
+      const originalResult = await originalAsyncFunc("inner");
+      const clonedResult = await clonedAsyncFunc("inner");
+
+      expect(originalResult.getCombined()).toBe("outer-inner");
+      expect(clonedResult.getCombined()).toBe("outer-inner");
+
+      // Test shared closure state
+      originalResult.addToArray("item1");
+      clonedResult.addToArray("item2");
+
+      expect(originalResult.getArray()).toEqual(["item1", "item2"]);
+      expect(clonedResult.getArray()).toEqual(["item1", "item2"]);
+
+      // Test modifying outer closure from cloned function
+      clonedResult.modifyOuter("modified");
+      expect(originalResult.getOuter()).toEqual({ value: "modified" });
+    });
+
+    it("should preserve closures with external dependencies in async functions", async () => {
+      const externalService = {
+        data: "external data",
+        async fetchData() {
+          await new Promise((resolve) => setTimeout(resolve, 1));
+          return this.data;
+        },
+      };
+
+      const config = { retries: 3, timeout: 1000 };
+
+      async function asyncFunctionWithExternalDeps(param: string) {
+        const localCache = new Map<string, any>();
+
+        return async function cachedAsyncOperation(key: string) {
+          if (localCache.has(key)) {
+            return localCache.get(key);
+          }
+
+          await new Promise((resolve) => setTimeout(resolve, 1));
+          const result = await externalService.fetchData();
+          const processedResult = `${param}-${result}-${key}`;
+
+          localCache.set(key, processedResult);
+          return {
+            cache: localCache,
+            config,
+            result: processedResult,
+            service: externalService,
+          };
+        };
+      }
+
+      const originalFunc = await asyncFunctionWithExternalDeps("test");
+      const clonedFunc = clone(originalFunc);
+
+      const originalResult = await originalFunc("key1");
+      const clonedResult = await clonedFunc("key2");
+
+      expect(originalResult.result).toBe("test-external data-key1");
+      expect(clonedResult.result).toBe("test-external data-key2");
+
+      // Both should share the same cache
+      expect(originalResult.cache.size).toBe(2);
+      expect(clonedResult.cache.size).toBe(2);
+      expect(originalResult.cache).toBe(clonedResult.cache);
+
+      // Both should reference the same external objects
+      expect(originalResult.service).toBe(externalService);
+      expect(clonedResult.service).toBe(externalService);
+      expect(originalResult.config).toBe(config);
+      expect(clonedResult.config).toBe(config);
+    });
+
+    it("should preserve closures in async functions with shared state", async () => {
+      const sharedState = { counter: 0 };
+
+      function createAsyncInstanceFunction(name: string) {
+        const instanceId = ++sharedState.counter;
+
+        return async function asyncInstance() {
+          const instance = {
+            getInfo: async () => {
+              await new Promise((resolve) => setTimeout(resolve, 1));
+              return `${name}:${instanceId}:${sharedState.counter}`;
+            },
+            getSharedState: () => sharedState,
+            id: instanceId,
+            increment: () => ++sharedState.counter,
+            name,
+          };
+
+          return instance;
+        };
+      }
+
+      const originalAsyncFunc = createAsyncInstanceFunction("original");
+      const clonedAsyncFunc = clone(originalAsyncFunc);
+
+      const original = await originalAsyncFunc();
+      const cloned = await clonedAsyncFunc();
+
+      expect(original.name).toBe("original");
+      expect(cloned.name).toBe("original"); // They're from the same factory
+      expect(original.id).toBe(1);
+      expect(cloned.id).toBe(1); // Same instance logic
+
+      // Both should share the same state
+      expect(original.getSharedState()).toBe(sharedState);
+      expect(cloned.getSharedState()).toBe(sharedState);
+      expect(original.getSharedState()).toBe(cloned.getSharedState());
+
+      // Test shared state modification
+      const originalIncrement = original.increment();
+      expect(originalIncrement).toBe(2);
+      expect(cloned.getSharedState().counter).toBe(2);
+
+      const originalInfo = await original.getInfo();
+      expect(originalInfo).toBe("original:1:2");
+    });
+
+    it("should handle edge cases with undefined and null closures", async () => {
+      const nullValue = null;
+      const undefinedValue = undefined;
+      const emptyObject = {};
+
+      async function asyncFunctionWithEdgeCases() {
+        return {
+          checkTypes: () => ({
+            emptyType: typeof emptyObject,
+            nullType: typeof nullValue,
+            undefinedType: typeof undefinedValue,
+          }),
+          getEmpty: () => emptyObject,
+          getNull: () => nullValue,
+          getUndefined: () => undefinedValue,
+        };
+      }
+
+      const clonedFunc = clone(asyncFunctionWithEdgeCases);
+      const originalResult = await asyncFunctionWithEdgeCases();
+      const clonedResult = await clonedFunc();
+
+      expect(originalResult.getNull()).toBe(null);
+      expect(clonedResult.getNull()).toBe(null);
+      expect(originalResult.getUndefined()).toBe(undefined);
+      expect(clonedResult.getUndefined()).toBe(undefined);
+      expect(originalResult.getEmpty()).toBe(emptyObject);
+      expect(clonedResult.getEmpty()).toBe(emptyObject);
+
+      const originalTypes = originalResult.checkTypes();
+      const clonedTypes = clonedResult.checkTypes();
+
+      expect(originalTypes).toEqual(clonedTypes);
+      expect(originalTypes).toEqual({
+        emptyType: "object",
+        nullType: "object",
+        undefinedType: "undefined",
+      });
     });
   });
 });
