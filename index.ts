@@ -783,21 +783,27 @@ function registerFunctionConstructors(registry: CloneRegistry) {
   registry.setHandler(Function, Handlers.Function, Validators.Function);
   registry.setHandler(Promise, Handlers.Promise);
 
-  const AsyncFunction = getConstructor(async function () {});
+  const asyncFunction = async function () {};
+  const AsyncFunction = getConstructor(asyncFunction);
+
   registry.setHandler(
     AsyncFunction,
     Handlers.AsyncFunction,
     Validators.AsyncFunction
   );
 
-  const GeneratorFunction = getConstructor(function* () {});
+  const generatorFunction = function* () {};
+  const GeneratorFunction = getConstructor(generatorFunction);
+
   registry.setHandler(
     GeneratorFunction,
     Handlers.GeneratorFunction,
     Validators.GeneratorFunction
   );
 
-  const AsyncGeneratorFunction = getConstructor(async function* () {});
+  const asyncGeneratorFunction = async function* () {};
+  const AsyncGeneratorFunction = getConstructor(asyncGeneratorFunction);
+
   registry.setHandler(
     AsyncGeneratorFunction,
     Handlers.AsyncGeneratorFunction,

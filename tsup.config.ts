@@ -1,6 +1,6 @@
 import { defineConfig } from "tsup";
 
-import { description, name, version } from "./package.json";
+import { description, version } from "./package.json";
 
 const js = `/*!
  * @ibnlanre/clone-v${version}
@@ -17,8 +17,6 @@ export default defineConfig({
   entry: ["./index.ts"],
   format: ["cjs", "esm"],
   minify: true,
-  name,
   outDir: "./dist",
   sourcemap: true,
-  target: "es2022",
 });
