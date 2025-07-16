@@ -1,3 +1,15 @@
+# [0.5.0](https://github.com/ibnlanre/clone/compare/v0.4.0...v0.5.0) (2025-07-16)
+
+
+### Features
+
+* enhance README with detailed clone function and registry documentation; improve closure preservation tests in unit tests ([36684a3](https://github.com/ibnlanre/clone/commit/36684a3c86d73393d9eb024fee9a181813fa3f47))
+* enhance README with detailed explanations for custom clone functions and validators ([23f54aa](https://github.com/ibnlanre/clone/commit/23f54aa828f272f5f4aa75788348100ddfa98f36))
+* refactor async function handlers in CloneRegistry for improved readability ([c7fe1f6](https://github.com/ibnlanre/clone/commit/c7fe1f6c0a3ec1c3c0c9f60f813d77bd71d71ee1))
+* update build script to include export checks and remove unnecessary config options ([6fb9f91](https://github.com/ibnlanre/clone/commit/6fb9f91eb9750750c3f0027045414d410f326cfd))
+
+
+
 # [0.4.0](https://github.com/ibnlanre/clone/compare/v0.3.3...v0.4.0) (2025-07-14)
 
 
