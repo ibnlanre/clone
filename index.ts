@@ -780,16 +780,13 @@ function isPropertyAccessor(descriptor: PropertyDescriptor) {
  * @returns Array of function constructors
  */
 function registerFunctionConstructors(registry: CloneRegistry) {
-  registry.setHandler(Function, Handlers.Function, Validators.Function);
-  registry.setHandler(Promise, Handlers.Promise);
-
-  const asyncFunction = async function () {};
-  const AsyncFunction = getConstructor(asyncFunction);
+  const asyncGeneratorFunction = async function* () {};
+  const AsyncGeneratorFunction = getConstructor(asyncGeneratorFunction);
 
   registry.setHandler(
-    AsyncFunction,
-    Handlers.AsyncFunction,
-    Validators.AsyncFunction
+    AsyncGeneratorFunction,
+    Handlers.AsyncGeneratorFunction,
+    Validators.AsyncGeneratorFunction
   );
 
   const generatorFunction = function* () {};
@@ -801,14 +798,17 @@ function registerFunctionConstructors(registry: CloneRegistry) {
     Validators.GeneratorFunction
   );
 
-  const asyncGeneratorFunction = async function* () {};
-  const AsyncGeneratorFunction = getConstructor(asyncGeneratorFunction);
+  const asyncFunction = async function () {};
+  const AsyncFunction = getConstructor(asyncFunction);
 
   registry.setHandler(
-    AsyncGeneratorFunction,
-    Handlers.AsyncGeneratorFunction,
-    Validators.AsyncGeneratorFunction
+    AsyncFunction,
+    Handlers.AsyncFunction,
+    Validators.AsyncFunction
   );
+
+  registry.setHandler(Promise, Handlers.Promise);
+  registry.setHandler(Function, Handlers.Function, Validators.Function);
 }
 
 /**
