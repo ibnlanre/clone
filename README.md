@@ -465,4 +465,4 @@ _See [PERFORMANCE_REPORT.md](./PERFORMANCE_REPORT.md) for detailed benchmarks an
 
 ## License
 
-MIT © [Ridwan Olanrewaju](https://github.com/ibnlanre)
+BSD-3-Clause © [Ridwan Olanrewaju](https://github.com/ibnlanre)
