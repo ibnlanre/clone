@@ -1,3 +1,12 @@
+## [0.5.1](https://github.com/ibnlanre/clone/compare/v0.5.0...v0.5.1) (2025-07-23)
+
+
+### Features
+
+* reorder function constructor registration in CloneRegistry for consistency ([fdfc8fc](https://github.com/ibnlanre/clone/commit/fdfc8fccfa361eca531fd8ffe3aa656cfedee395))
+
+
+
 # [0.5.0](https://github.com/ibnlanre/clone/compare/v0.4.0...v0.5.0) (2025-07-16)
 
 
